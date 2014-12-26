@@ -1,13 +1,13 @@
-8099516001a0da0d5f88fb3cc95454fd *DESCRIPTION
+5f3cc0f46d7a62d18bad22375a705be9 *DESCRIPTION
 93933081128df11c0a7c383aeb519e71 *NAMESPACE
-1735e6fbd16526411026a073d9a15f82 *R/cjoint.R
+096fb0d937b5d482dd3ea820911bbfd0 *R/cjoint.R
 ee40b051c77720a4770442c4f17c8082 *data/immigrationconjoint.rda
 1b342068d25112ce9a2572401946c4ef *data/immigrationdesign.rda
 8626cdd3e3bac6f7c8d0638271facab5 *demo/00Index
 446e17e64c02ef13ee8891c761681d9b *demo/cjointdemo.R
 ded412cc84d247bb9736e4c24ad10bcf *inst/CandidateConjointQualtrics.csv
 9047bf23f807daaa39134acb7f4baee0 *man/amce.Rd
-47db5f006dca3434360e28a3c1b610dd *man/cjoint-package.Rd
+a30b00d02d3df43103b999ddaf1e1791 *man/cjoint-package.Rd
 ad4605a7288803df3f8577cd3e81b304 *man/immigrationconjoint.Rd
 fb7f198fe1d124d7db507eb9e9dc4313 *man/immigrationdesign.Rd
 08870c7bfeec7c135a3cffe601a69369 *man/makeDesign.Rd

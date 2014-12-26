@@ -345,7 +345,7 @@ amce <- function(formula, data, design="uniform", subset=NULL, respondent.id=NUL
         J_call <- Quote(design$J[])
         J_call <- J_call[c(1, 2, rep(3, length(dim(design$J))))]
         index <- which(names(dimnames(design$J)) == effect)
-        J_call[index+2] <- sub(effect, "", baseline_lev)
+        J_call[index+2] <- baseline_lev
         # Make a Call - store resulting matrix in J_mat
         eval(call("<-", Quote(J_baseline), J_call))       
         
@@ -373,7 +373,7 @@ amce <- function(formula, data, design="uniform", subset=NULL, respondent.id=NUL
             J_call <- Quote(design$J[])
             J_call <- J_call[c(1, 2, rep(3, length(dim(design$J))))]
             index <- which(names(dimnames(design$J)) == effect)
-            J_call[index+2] <- sub(effect, "", lev)
+            J_call[index+2] <- lev
             # Make a Call - store resulting matrix in J_mat
             eval(call("<-", Quote(J_mat), J_call))
             
@@ -517,7 +517,7 @@ amce <- function(formula, data, design="uniform", subset=NULL, respondent.id=NUL
         J_call <- J_call[c(1, 2, rep(3, length(dim(design$J))))]
         for (p in 1:length(substrings)){
           index <- which(names(dimnames(design$J)) == substrings[p])
-          J_call[index+2] <- sub(substrings[p], "", baseline_levs[p])
+          J_call[index+2] <- baseline_levs[p]
         }
         # Make a Call - store resulting matrix in J_baseline
         eval(call("<-", Quote(J_baseline), J_call))         
@@ -602,7 +602,7 @@ amce <- function(formula, data, design="uniform", subset=NULL, respondent.id=NUL
               J_call <- J_call[c(1, 2, rep(3, length(dim(design$J))))]
               for (p in 1:length(substrings)){
                 index <- which(names(dimnames(design$J)) == substrings[p])
-                J_call[index+2] <- sub(substrings[p], "", acie_matrix[m,substrings[p]])
+                J_call[index+2] <- acie_matrix[m,substrings[p]]
               }
               # Make a Call - store resulting matrix in J_mat
               eval(call("<-", Quote(J_mat), J_call))
@@ -1358,7 +1358,7 @@ read.qualtrics <- function(filename, responses, covariates=NULL, respondentID=NU
     # Extract a covariate vector
     if (!is.null(covariates)){
       covariate_index <- which(q_names %in% covariates)
-
+      covnames <- q_names[covariate_index]
       unit_cov <- qualtrics_results[r,covariate_index]
 
     }else{
@@ -1391,16 +1391,16 @@ read.qualtrics <- function(filename, responses, covariates=NULL, respondentID=NU
            selec <- 0
          }
 
-         row_vec <- as.vector(unlist(c(r,respondent_index[r], k, j, profile_levels, selec, unit_cov)))
+         row_vec <- data.frame(r,respondent_index[r], k, j, profile_levels, selec, unit_cov)
 
-         header <- as.vector(unlist(c("respondentIndex", "respondent","task","profile",attribute_vector, "selected", covariates)))
+         header <- as.vector(unlist(c("respondentIndex", "respondent","task","profile",attribute_vector, "selected", covnames)))
 
-         names(row_vec) <- header
+         colnames(row_vec) <- header
 
          if (is.null(out_data_dataset)){
-           out_data_dataset <- as.data.frame(t(row_vec), stringsAsFactors = F)
+           out_data_dataset <- row_vec
          }else{
-           out_data_dataset <- rbind(out_data_dataset, as.data.frame(t(row_vec), stringsAsFactors = F))
+           out_data_dataset <- rbind(out_data_dataset, row_vec)
          }
 
        }
@@ -1408,7 +1408,11 @@ read.qualtrics <- function(filename, responses, covariates=NULL, respondentID=NU
     }
   }
   # Do some post-processing
+  for (m in attribute_vector){
+    out_data_dataset[[m]] <- as.factor(out_data_dataset[[m]])
+  }
   out_data_dataset$respondentIndex <- as.integer(out_data_dataset$respondentIndex)
+  out_data_dataset$selected <- as.integer(out_data_dataset$selected)
   out_data_dataset$task <- as.integer(out_data_dataset$task)
   out_data_dataset$profile <- as.integer(out_data_dataset$profile)
   
