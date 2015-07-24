@@ -1,4 +1,4 @@
-################ Demo for cjoint package - Strezhnev, Hainmueller, Hopkins, Yamamoto ####################
+################ Demo for cjoint package - Strezhnev, Berwick, Hainmueller, Hopkins, Yamamoto ####################
 
 # Load data from immigration conjoint data (from the replication data to "Causal Inference in Conjoint Analysis")
 data("immigrationconjoint")
@@ -59,3 +59,37 @@ interaction_results <- amce(Chosen_Immigrant ~ Gender + Education + Job + Educat
 summary(interaction_results)
 # Plot results
 plot(interaction_results, xlab="Change in Pr(Immigrant Preferred for Admission to U.S.)", xlim=c(-.3,.3), breaks=c(-.2, 0, .2), labels=c("-.2","0",".2"), text.size=13)
+
+# Alternative specification using ":"
+interaction_results <- amce(Chosen_Immigrant ~ Gender + Education + Job + Education:Job, data=immigrationconjoint, cluster=TRUE, respondent.id="CaseID", design=immigrationdesign)
+summary(interaction_results)
+
+### Specify respondent-varying interactions the same way, but make sure to add the variable to the respondent.varying argument # Add respondent-varying interaction
+# Subset out NA values prior to running - otherwise it will throw an error
+interaction_results <- amce(Chosen_Immigrant ~ Education + Job + Education*ethnocentrism, data=subset(immigrationconjoint, !is.na(immigrationconjoint$ethnocentrism)), cluster=TRUE, respondent.id="CaseID",design=immigrationdesign, respondent.varying=c("ethnocentrism"))
+
+# Summarize results, at quantiles of respondent-varying attribute
+summary(interaction_results)
+
+# Plot results by continuous variable, showing non-interacted or not
+plot(interaction_results, facet.name=c("ethnocentrism"))
+plot(interaction_results, facet.name=c("ethnocentrism"), show.all=T)
+
+# You can manually set the baselines used in the function (in addition to just releveling the factors in your dataset) 
+baselines <- list()
+baselines$Education <- "graduate degree"
+
+# Run function
+interaction_results <- amce(Chosen_Immigrant ~ Gender + Education + Job + Education:Job, data=immigrationconjoint, cluster=TRUE, respondent.id="CaseID",design=immigrationdesign,baselines=baselines)
+
+# Summarize results
+summary(interaction_results)
+
+# Plot results by factor variable
+plot.amce(interaction_results,facet.name =c("Education"))
+
+# Only plot for some levels of factor variable
+facet.levels1 <- list()
+facet.levels1[["Education"]] <-(c("college degree","two-year college"))
+names(facet.levels1[["Education"]]) <- c("college degree","two-year college")
+plot.amce(interaction_results,facet.name =c("Education"), facet.levels = facet.levels1)
