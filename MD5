@@ -1,6 +1,6 @@
-3ae86ac5c0eb200ac425a300cc55cdbf *DESCRIPTION
-f83169258ef16fbd75255d260a535289 *NAMESPACE
-c69e1d538b6439009730abf2507b1ca6 *R/cjoint.R
+2248a748cdd8325fa6e38c8e1e488e24 *DESCRIPTION
+62ef493055f2c355ceeee4da12bb6939 *NAMESPACE
+d2ad7e049aac486a66caddf44a654b17 *R/cjoint.R
 ee40b051c77720a4770442c4f17c8082 *data/immigrationconjoint.rda
 1b342068d25112ce9a2572401946c4ef *data/immigrationdesign.rda
 8626cdd3e3bac6f7c8d0638271facab5 *demo/00Index
@@ -11,7 +11,7 @@ ded412cc84d247bb9736e4c24ad10bcf *inst/CandidateConjointQualtrics.csv
 ad4605a7288803df3f8577cd3e81b304 *man/immigrationconjoint.Rd
 fb7f198fe1d124d7db507eb9e9dc4313 *man/immigrationdesign.Rd
 92695a4e0d118fefd1b8ec92647e11b7 *man/makeDesign.Rd
-02c1cea516cf88ad01d27b1c918e8dd9 *man/plot.amce.Rd
+4f7c0ad0cc1484f0294f8faa51c986b0 *man/plot.amce.Rd
 5466845fd1a01ba52734c4749221f838 *man/read.qualtrics.Rd
 1d0b5fe3cc321c5135bec2a5119a88f3 *man/summary.amce.Rd
 37f001a6da00d82aa0030569be55383b *tests/testthat.R

@@ -6,6 +6,7 @@ importFrom("stats", "coefficients", "formula", "lm", "model.matrix",
              "pnorm", "qnorm", "quantile", "relevel", "terms", "var")
 importFrom("utils", "read.csv")
 importFrom("methods", "Quote")
+importFrom("stats", "vcov")
 export(amce)
 export(plot.amce)
 export(summary.amce)

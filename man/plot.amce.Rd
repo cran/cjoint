@@ -10,7 +10,7 @@ Plot AMCE Estimates
 \usage{
 \method{plot}{amce}(x, main = "", xlab = "Change in E[Y]", ci = 0.95,
                     colors = NULL, xlim = NULL, breaks = NULL,
-                    labels = NULL, attribute_names = NULL, level_names = NULL,
+                    labels = NULL, attribute.names = NULL, level.names = NULL,
                     label.baseline = TRUE, text.size = 11, text.color = "black",
                     point.size = 0.6, plot.theme = NULL, facet.name = NULL, 
                     facet.levels = NULL, show.all =	FALSE, 
@@ -42,10 +42,10 @@ Plot AMCE Estimates
   \item{labels }{
   Vector denoting how x-axis tick marks should be labeled. If \code{NULL} plot will use ggplot2 defaults.
 }
-  \item{attribute_names }{
+  \item{attribute.names }{
   Character vector of attribute names to be plotted as labels. By default \code{plot.amce} will use the attribute names in the "amce" object passed to it.
 }
-  \item{level_names }{
+  \item{level.names }{
   A list containing character vector elements with names in \code{attribute_names}. Each character vector in the list contains the level names to be plotted as labels beneath the corresponding attribute. By default \code{plot.amce} will use the level names in the "amce" object passed to it.
 }
   \item{label.baseline }{
