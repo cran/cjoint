@@ -16,3 +16,5 @@ export(read.qualtrics)
 S3method(plot, amce)
 S3method(summary, amce)
 S3method(print, summary.amce)
+importFrom("utils", "packageDescription")
+

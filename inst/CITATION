@@ -1,0 +1,14 @@
+note <- sprintf("R package version %s", meta$Version)
+
+bibentry(bibtype = "Manual",
+	title = "{cjoint}: Causal Inference in Conjoint Analysis: Understanding Multi-Dimensional Choices via Stated Preference Experiments",
+	author = c(person("Jens", "Hainmueller"),
+               	     person("Dan", "Hopkins"),
+                    person("Teppei", "Yamamoto")),
+	journal = "Political Analysis",
+	volume = 22,
+	number = 1,
+	pages = 1-30,	
+	year = 2014,
+     note = note,
+     url = "https://CRAN.R-project.org/package=cjoint")
