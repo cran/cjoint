@@ -38,16 +38,26 @@ attribute_list[["Language Skills"]] <- c("fluent English",
 # Randomization constraints in the conjoint design
 constraint_list <- list()
 constraint_list[[1]] <- list()
-constraint_list[[1]][["Education"]] <- c("no formal","4th grade","8th grade","high school")
-constraint_list[[1]][["Job"]] <- c("financial analyst","computer programmer","research scientist","doctor")
+## constraint_list[[1]][["Education"]] <- c("no formal","4th grade",
+##                                   "8th grade","high school",
+##                                          "two-year college","college degree")
+constraint_list[[1]][["Education"]] <- c("no formal")
+constraint_list[[1]][["Job"]] <- c("waiter","child care provider",
+                             "gardener","financial analyst",
+                             "construction worker","teacher",
+                             "computer programmer","nurse",
+                             "research scientist","doctor")
 constraint_list[[2]] <- list()
 constraint_list[[2]][["Reason for Application"]] <- c("escape persecution")
-constraint_list[[2]][["Country of Origin"]] <- c("Germany","France","Mexico","Philippines","Poland","India")
+constraint_list[[2]][["Country of Origin"]] <- c("Germany","France","Mexico",
+                                            "Philippines","Poland","India",
+                                            "China","Sudan","Somalia")
 
-immigrationdesign <- makeDesign(type='constraints', attribute.levels=attribute_list, constraints=constraint_list)
+immigrationdesign2 <- makeDesign(type='constraints', attribute.levels=attribute_list, constraints=constraint_list)
 
 # Run AMCE estimator - this calls the main amce() function in the cjoint package
-results <- amce(Chosen_Immigrant ~  Gender + Education + `Language Skills` + `Country of Origin` + Job + `Job Experience` + `Job Plans` + `Reason for Application` + `Prior Entry`, data=immigrationconjoint, cluster=TRUE, respondent.id="CaseID", design=immigrationdesign)
+results <- amce(Chosen_Immigrant ~  Gender + Education + `Language Skills` + `Country of Origin` + Job + `Job Experience` + `Job Plans` + `Reason for Application` + `Prior Entry`, data=immigrationconjoint, cluster=TRUE, respondent.id="CaseID", design=immigrationdesign2)
+
 # Print summary
 summary(results)
 # Plot results

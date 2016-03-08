@@ -12,7 +12,8 @@ Plot AMCE Estimates
                     colors = NULL, xlim = NULL, breaks = NULL,
                     labels = NULL, attribute.names = NULL, level.names = NULL,
                     label.baseline = TRUE, text.size = 11, text.color = "black",
-                    point.size = 0.6, plot.theme = NULL, plot.display = "all",
+                    point.size = 0.5, dodge.size = 0.9, plot.theme = NULL, 
+                    plot.display = "all",
 		    facet.names = NULL, facet.levels = NULL, ...)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -57,7 +58,10 @@ Plot AMCE Estimates
   Color of text in plot. Defaults to "black".
 }
   \item{point.size }{
-  Size of points in the plot. Defaults to 0.6.
+  Size of points in the plot. Defaults to 0.5.
+}
+  \item{dodge.size }{
+  Width to dodge overlaps to the side. Defaults to 0.9.
 }
   \item{plot.theme }{
   A ggplot2 'theme' object to be added to the plot. If NULL, defaults to black-and-white theme. Note that passing a theme object will override text and point color/size options. 
