@@ -60,7 +60,7 @@ An object of class "amce" containing:
 \item{numrespondents}{The number of respondents in the dataset (if \code{respondent.id} is not \code{NULL}). }
 \item{respondent.varying}{Names of respondent-varying variables, if any.}
 \item{cond.formula}{The formula used for calculating estimates conditional on respondent varying characteristics. Only returned when respondent-varying characteristics are present.}
-\item{cond.estimates}{A list containing AMCE and ACIE estimates conditional on the values of the respondent-varying characteristics. Each element of \code{cond.estimates} corresponds to a single attribute or interaction. Only returned when respondent-varying characteristics are present}
+\item{cond.estimates}{A list containing estimated effects of respondent-varying characteristics conditional on attribute values. Each element of \code{cond.estimates} corresponds to a single attribute or interaction. Only returned when respondent-varying characteristics are present. To obtain AMCE and ACIE estimates conditional on the values of the respondent-varying characteristics see \code{\link{summary.amce}}}
 \item{samplesize_full}{The number of valid profiles (rows) in the dataset when respondent varying characteristics are included. Only returned when respondent-varying characteristics are present. }
 \item{vcov.resp}{The modified variance-covariance matrix for effect estimates conditional on respondent-varying characteristics, where dependent relationships have been incorporated into variances and covariances. Only returned when respondent-varying characteristics are present. }
 }

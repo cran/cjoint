@@ -1,6 +1,22 @@
+#' @import ggplot2
+#' @import lmtest
+#' @import Matrix
+#' @import sandwich
+#' @import survey
+#' @importFrom methods Quote
+#' @importFrom stats coefficients formula lm model.matrix pnorm qnorm 
+#' @importFrom stats quantile relevel terms var vcov
+#' @importFrom stats as.formula reshape
+#' @importFrom utils read.csv packageDescription
+#' @export amce
+#' @export makeDesign
+#' @export plot.amce
+#' @export print.summary.amce
+#' @export read.qualtrics
+#' @export summary.amce
 ## cjoint: An R Package for estimating Average Marginal Component-specific Effects from conjoint survey experiments
-## July, 2015
-## Anton Strezhnev, Elissa Berwick, Jens Hainmueller, Daniel Hopkins, Teppei Yamamoto
+## August, 2017
+## Elissa Berwick, Jens Hainmueller, Daniel Hopkins, Anton Strezhnev, Teppei Yamamoto
 
 #############################
 # Clustered standard errors
@@ -20,44 +36,27 @@ cluster_se_glm <- function(model, cluster){
     M <- length(unique(cluster))
     N <- length(cluster)           
     K <- model$rank
-    
-    ## if(M<50) {
-    ##     warning("Fewer than 50 clusters, variances may be unreliable (could try block bootstrap instead).")
-    ## }
-   
+
     dfc <- (M/(M - 1)) * ((N - 1)/(N - K))
-    uj  <- apply(estfun(model), 2, function(x) tapply(x, cluster, sum));
+    uj  <- apply(estfun(model), 2, function(x) tapply(x, cluster, sum))
     rcse.cov <- dfc * sandwich(model, meat. = crossprod(uj)/N)
     return(rcse.cov)
 }
 
-###################################################################
-## function for removing ALL whitespaces
+#########################################################################
+## function for removing ALL punctuation, symbols, and spaces from string
 ## from elements of vector "vec"
-## trailing and leading stripped
-## white space in middle replaced with "repl"
-## also removes special characters that mess up grep and formula
-###################################################################
+########################################################################
 
-clean.names <- function(vec,repl="_") {
-    #define meta characters to be removed (excl. ^, *)
-    meta <- c("[","$","{","(","\\","+",")","|","?","<",">",".")
-    #add escapes
-    meta2 <- sapply(meta,USE.NAMES = F,function(x) paste(c("\\",x),collapse=""))
-    #add some other special characters to be removed
-    special <- c(meta2,"!",",",";","'","`","/","-")
-    #make regexp version
-    special.regexp <- paste(c("[",special,"]"),collapse = "")
-    # clean names in vec
-    sapply(vec,USE.NAMES = F,function(x) {
-        #remove special characters
-        x <- gsub(special.regexp,"",x)
-        #remove leading and trailing whitespaces
-        x <- gsub("^\\s+|\\s+$", "", x)
-        #replace middle space with repl
-        gsub("\\s+",repl,x)
-    })
+clean.names <- function(str) {
+    #split components of interactions
+    x <- strsplit(str,":")[[1]]
+    #and apply cleaning separately, removing any punctuation (P), symbols (S), and separators (Z)
+    x <- gsub("[\\p{P}\\p{S}\\p{Z}]","",x,perl=T)
+    #re-attach
+    paste(x,collapse=":")
 }
+clean.names <- Vectorize(clean.names,vectorize.args=("str"),USE.NAMES = F)
 
 #########################
 ## amce function
@@ -88,7 +87,8 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
         if (class(data[[char]]) == "factor") {
             old_names <- names(user_levels)
             user_levels <- c(user_levels,levels(data[[char]]))
-            names(user_levels) <- c(old_names,clean.names(levels(data[[char]])))
+            new_names <- sapply(clean.names(levels(data[[char]])),function(x) paste(clean.names(char),x,sep=""))
+            names(user_levels) <- c(old_names,new_names)
         }
     }
 
@@ -105,10 +105,8 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
     orig_effects <- clean.names(attr(terms(formula_user),"term.labels"))
     #formula sorting part I: sort non-interaction terms and put them first
     orig_effects <- c(sort(orig_effects[!grepl(":",orig_effects)]), orig_effects[grepl(":",orig_effects)])
-    #combine with "+"
     vars_plus <- paste(orig_effects,collapse = " + ")
-    #then remake formula 
-    form <- formula(paste(c(y_var,vars_plus),collapse = "~"))
+    form <- formula(paste(c(y_var,vars_plus),collapse = " ~ "))
     orig_effects <- attr(terms(form),"term.labels")
 
     #find missing base terms
@@ -126,7 +124,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
     vars_plus <- paste(orig_effects,collapse = " + ")
     #then remake formula 
     form <- formula(paste(c(y_var,vars_plus),collapse = "~"))
-    orig_effects <- attr(terms(form),"term.labels")
+    orig_effects <- clean.names(attr(terms(form),"term.labels"))
 
     #unique variables only (no interactions)
     unique_vars <- clean.names(rownames(attr(terms(form),"factor"))[-1])
@@ -160,7 +158,6 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
     }
 
     ### Extra name cleaning
-
     #cleaning additional inputs
     if (!is.null(respondent.id)) respondent.id <- clean.names(respondent.id)
     if (!is.null(weights)) weights <- clean.names(weights)
@@ -171,17 +168,19 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
 
     #cleaning within data 
     colnames(data) <- clean.names(colnames(data))
-    data <- data.frame(data) #in case of dplyr etc.
-    for (var in colnames(data)) {
+    ## data <- data.frame(data) #in case of dplyr etc.
+    var_to_check_levels <- unique(c(formula_char_user, respondent_vars, profile_vars, profile_effects, orig_effects))
+    
+    for (var in var_to_check_levels) {
         if (class(data[[var]]) == "factor") {
             clean.labels <- clean.names(levels(data[[var]]))
             if (length(unique(clean.labels)) != length(clean.labels)) {
-                stop (paste("Error: levels of variable", var, "when whitespace and meta-characters are removed. Please rename."))
+                stop (paste("Error: levels of variable", var, "are not unique when whitespace and meta-characters are removed. Please rename."))
             }
-            data[[var]] <- factor(data[[var]],levels=levels(data[[var]]),labels=clean.names(levels(data[[var]])))
+            data[[var]] <- factor(data[[var]],levels=levels(data[[var]]), labels=clean.names(levels(data[[var]])))
         }
     }
-    
+  
 #######  Sanity Checks Re: Data
 
     # Are variables in data?
@@ -198,7 +197,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
             warning(paste(c("Warning: ",var," changed to factor"),collapse=""))
         }
     }
-    
+  
     # Is there missing data?
     if(na.ignore == FALSE){
       for(variab in formula_char){
@@ -273,14 +272,15 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
     if (class(design) == "conjointDesign") {
         # Remove whitespaces etc from dimension names of design array 
         names(dimnames(design$J)) <- clean.names(names(dimnames(design$J)))
-        dimnames(design$J) <- lapply(dimnames(design$J),function(x) clean.names(x))  
+        dimnames(design$J) <- lapply(dimnames(design$J),function(x) clean.names(x))
+        
         #and design dependencies
         names(design$depend) <- clean.names(names(design$depend))
         design$depend <- lapply(design$depend,function(x) clean.names(x))  
         #Now check to make sure profile varying attributes are in conjointDesign
         for (eff in profile_vars) {   
             if (!(eff %in% names(dimnames(design$J)))) {
-                stop(paste("Error:", var, "not in 'design' object"))
+                stop(paste("Error:", eff, "not in 'design' object"))
             }
         }      
         #Check to make sure conjointDesign attributes are in data and level names match
@@ -289,13 +289,31 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                 stop(paste("Error: attribute", eff, "in 'design' object is not in 'data'"))
             } else {
         # Check all level names for the attribute in dataset appear in design
-                for (lev in levels(as.factor(data[[eff]]))) {
+                for (lev in clean.names(levels(as.factor(data[[eff]])))) {
                     if (!(lev %in% dimnames(design$J)[[eff]])) {
+                        #print(paste0('checking level ', lev))
                         stop(paste("Error: factor level", lev, "of attribute", eff, "not in 'design' object"))
                     }
                 }
             }
-        }    
+        }
+        
+        depend_to_check <- NULL
+        for (var in names(design$depend)) {
+          depend_to_check <- c(depend_to_check,design$depend[[var]])
+        }
+        ## only check any variables that weren't already checked
+        depend_to_check <- depend_to_check[!depend_to_check %in% var_to_check_levels]
+        ## Check that all dependencies have unique levels
+        for (var in depend_to_check){
+          if (class(data[[var]]) == "factor") {
+            clean.labels <- clean.names(levels(data[[var]]))
+            if (length(unique(clean.labels)) != length(clean.labels)) {
+              stop (paste("Error: levels of variable", var, "used as a dependency, are not unique when whitespace and meta-characters are removed. Please rename."))
+            }
+            data[[var]] <- factor(data[[var]],levels=levels(data[[var]]), labels=clean.names(levels(data[[var]])))
+          }
+        }
     } else if (design == "uniform") {    
         # else if design == "uniform", create J-dimensional array 
         design <- list()        
@@ -304,15 +322,15 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
         design.dim <- vector(length=length(profile_vars))
         dim_list <- list()
         for (i in 1:length(profile_vars)) {
-            design.dim[i] <- length(unique(data[[profile_vars[i]]]))
             dim_list[[i]] <- levels(factor(data[[profile_vars[i]]]))
+            design.dim[i] <- length(dim_list[[i]])
         }
         names(dim_list) <- profile_vars
         design$J <- array(1/prod(design.dim), dim=design.dim, dimnames=dim_list)
         design$depend <- compute_dependencies(design$J)       
     } else {
          #if neither uniform nor conjointDesign, error
-        stop('Error: argument \'design\' must be a valid character string ("uniform") or a conjointDesign object')   
+        stop("Design object must be a valid character string 'uniform' or a conjointDesign object")   
     }
 
 ####### Subsetting data    
@@ -402,7 +420,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
         ### profile only formula
         #remove those involving respondent things
         prof_only <- unlist(sapply(all_run_vars,function(x) {
-            y <- strsplit(x,":")[[1]]
+            y <- clean.names(strsplit(x,":")[[1]])
             if(!any(is.element(y,respondent_vars))) x
         }))
         prof_only_plus <- paste(prof_only,collapse = " + ")
@@ -413,7 +431,8 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
         #otherwise use full formula
         form_prof <- form_full
     }
-    all_prof <- attr(terms(form_prof),"term.labels")
+    all_prof <- clean.names(attr(terms(form_prof),"term.labels"))
+    all_run_vars <- clean.names(all_run_vars)
     if (any(!is.element(all_prof,all_run_vars))) {
         warning("Warning: mismatch of term names between full formula and profile formula")
     }
@@ -483,6 +502,33 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
         }
     }
 
+    ## function for fixing variance-covariance matrices
+    ## input in vcov output from lm and a matrix of varprobs
+    ## draws on matrix package
+    fix.vcov <- function(varprob,vcov) {
+        if (!requireNamespace("Matrix", quietly = TRUE)){
+          stop("Matrix package needed for this function to work. Please install it.",
+               call. = FALSE)
+        }
+        #designate inputs as sparse
+        varprob2 <- Matrix(varprob,sparse=TRUE)
+        vcov2 <- Matrix(vcov,sparse=TRUE)
+        #calculate and add in single sum corrections
+        fix1 <- varprob2 %*% vcov2 + t(varprob2 %*% vcov2) + vcov2
+        #vcov matrix as vector
+        vcov_vector <- matrix(as.vector(vcov2),ncol=1,nrow=length(as.vector(vcov2)))
+        #use to multiply combinations of varprobs by covariances and sum
+        weighted_covs <- kronecker(varprob2,varprob2) %*% vcov_vector
+        #make corrections into a matrix
+        weighted_covs <- matrix(weighted_covs,nrow=nrow(vcov), ncol=ncol(vcov))
+        #add to single sum corrections
+        fix2 <- fix1 + weighted_covs
+        #return as normal matrix
+        out <- matrix(fix2,ncol=ncol(vcov),nrow=nrow(vcov))
+        colnames(out) <- rownames(out) <- rownames(vcov)
+        return(out)
+    }
+
 ######### Extract Effects from the profile-vars only linear model
 
 # proposed nomenclature here:
@@ -524,7 +570,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
             #get all level names and coefficient names-- sans baseline!!!
             all_levels[[effect]] <- levels(data[[effect]])[-1]
             all_levels_coefs[[effect]] <- sapply(all_levels[[effect]], function(x) {
-                paste(effect, x, sep="")
+                paste(c(effect,x), collapse="")
             })
         }
   
@@ -545,7 +591,8 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
         } else {
             rownames(results) <- c("AMCE", "Std. Error")
         }
-        colnames(results) <- as.character(levels[,1])
+        colnames(results) <- coefs
+        results[2,] <- NA
 
          #### find extra times when this effect is mentioned
         all_depends <- unlist(sapply(all_prof,USE.NAMES = F,function(x) {
@@ -559,19 +606,13 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
         for(j in 1:nrow(levels)) {
                 
             #figure out which level of inter we're doing
-            effect_level <- as.character(levels[j,1])
+            ## effect_level <- as.character(levels[j,1])
             effect_level_coef <- coefs[j]
-
-            #get its beta and var-cov matrix
+            #get its beta 
             initial_beta <- coefficients(lin.mod.prof)[effect_level_coef]
-            if (effect_level_coef %in% colnames(vcov_mat_prof)) {
-                initial_var <- vcov_mat_prof[effect_level_coef, effect_level_coef]
-            } else {
-                initial_var <- NA
-            }
-
+ 
             #if interaction,make sure there is baseline support for this level combination
-            if (!is.na(initial_beta) & !is.na(initial_var) & length(substrings) > 1) {
+            if (!is.na(initial_beta) & length(substrings) > 1) {
                 for (effect1 in substrings) {
                     #get effect base
                     effect_base1 <- levels(data[[effect1]])[1]
@@ -583,7 +624,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                     }                        
                     #if there's no support left, change beta and var to NA
                     if (nrow(base.subset) == 0) {
-                        initial_beta <- initial_var <- NA
+                        initial_beta <- NA
                         #and give a warning that you had to do it
                         warn_i <- warn_i + 1
                     }
@@ -592,7 +633,8 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                
             # If initial_beta and initial_variance are not NA (are valid level combination)
             # and there are dependent variables to incorporate
-            if (!is.na(initial_beta) & !is.na(initial_var) & length(all_depends) > 0) {
+            if (!is.na(initial_beta) & length(all_depends) > 0) {
+                
                 #get the slice of design array J associated with baseline and inter level
                 J_effect_call <- J_base_call <-  J_call
                 for(effect in substrings) {
@@ -607,12 +649,6 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                 eval(call("<-", Quote(J_baseline), J_base_call))
                 eval(call("<-", Quote(J_effect), J_effect_call))
 
-                # Initialize some vectors to store interactions and probabilities
-                interaction_probabilities <- c()
-                interaction_names <- c()
-                covariance_names <- c()
-                covariance_probs <- c()
-
                 #### loop over dependencies for all components of interaction
                 for(k in 1:length(all_depends)) {
 
@@ -623,7 +659,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                     substrings_d <- substrings_d[!is.element(substrings_d,substrings)]
                     all_depend_coefs <- list()
                     for (sub in substrings_d) {
-                        all_depend_coefs[[sub]] <-  sapply(levels(data[[sub]]), function(x) paste(sub, x,sep=""))
+                        all_depend_coefs[[sub]] <-  sapply(levels(data[[sub]]), function(x) paste(c(sub,x),collapse=""))
                     }
                     all_depend_levels <- expand.grid(all_depend_coefs)
                     substrings_l <- strsplit(effect_level_coef,":")[[1]]
@@ -655,68 +691,22 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                     all_depend_level_coefs <- all_depend_level_coefs[!is.na(lin.mod.prof$coefficients[all_depend_level_coefs])]
                     varprob_mat[effect_level_coef,all_depend_level_coefs] <- as.numeric(joint_prob[all_depend_level_coefs])/as.numeric(sum(joint_prob))
                     
-                    ##### if all_depend_level_coefs is 1 or longer (because R doesn't parse for 1:0 correctly)
-                    if (length(all_depend_level_coefs)){
-                      ##### loop over levels of depends attribute
-                      #if present baselines will omit automatically because coefs are NA
-                      for (z in 1:length(all_depend_level_coefs)) {
-  
-                          #coefficient name that goes with this effect level & depend level
-                          depend_level_coef <- all_depend_level_coefs[z] 
-                          #calculate probabilities for this effect and depend level 
-                          var_prob <- joint_prob[depend_level_coef]
-                          var_prob <- as.numeric(var_prob)/as.numeric(sum(joint_prob))
-                                  
-                          #now add interaction beta and variance to initial 
-                          if (!is.na(lin.mod.prof$coefficients[depend_level_coef])) {
-                              if (!is.na(vcov_mat_prof[depend_level_coef,depend_level_coef]) & !is.na(vcov_mat_prof[effect_level_coef, depend_level_coef])) {
-                                  # add weighted beta to initial_beta
-                                  initial_beta <- initial_beta + var_prob*lin.mod.prof$coefficients[depend_level_coef]
-                                  # add weighted variance + covariance terms too
-                                  initial_var <- initial_var + (var_prob^2)*vcov_mat_prof[depend_level_coef, depend_level_coef] +  2*(var_prob)*vcov_mat_prof[effect_level_coef, depend_level_coef]
-                                          
-                                   # add probabilities and names to compute covariances
-                                  interaction_probabilities <- c(interaction_probabilities, var_prob)
-                                  interaction_names <- c(interaction_names, depend_level_coef)
-                                  #and across different variables
-                                  covariance_probs <- c(covariance_probs,var_prob)
-                                  covariance_names <- c(covariance_names,depend_level_coef)
-  
-                              }
-                          } #end if that added beta & var, cov
-                          
-                      } #end loop over levels of dependent attribute
+                    ##### if all_depend_level_coefs is 1 or longer 
+                    if (length(all_depend_level_coefs)) {
+                        #calculate probabilities for this effect and depend level 
+                        var_prob <- joint_prob[all_depend_level_coefs]
+                        var_prob <- as.numeric(var_prob)/as.numeric(sum(joint_prob))
+                        # add weighted beta to initial_beta
+                        depend_betas <- lin.mod.prof$coefficients[all_depend_level_coefs]
+                        initial_beta <- sum(initial_beta,var_prob*depend_betas,na.rm=T)
                     }
+                    
                 } #end for loop over different dependent attributes
-
-                # after going through all levels of the depends and all dependent attributes
-                # add remaining covariance terms to the parameter variance 
-                if (length(interaction_probabilities) > 1) {
-                    #loop over all depend attributes 1 to N-1
-                    for (x in 1:(length(interaction_probabilities) - 1)) {
-                        #loop over depend attributes one ahead of previous to the end
-                        for (y in (x+1):(length(interaction_probabilities))) {
-                            initial_var <- initial_var + 2*interaction_probabilities[x]*interaction_probabilities[y]*vcov_mat_prof[interaction_names[x], interaction_names[y]]
-                        }
-                    }
-                } #end if has more than 1 depend levels and/or depend attributes
-
-                #add names of depend levels and their var probs to list
-                #if probs not null that is
-                if (!is.null(covariance_probs)) {
-                    covariance_list[[effect_level_coef]] <- data.frame(covariance_names,covariance_probs)
-                }
-            
             } #end if has valid beta, var, dependencies
 
             # Store effect and standard error estimates
             results[1,j] <- initial_beta
-            if (!is.na(initial_var)) {
-                results[2,j] <- sqrt(initial_var)
-            } else {
-                results[2,j] <- NA
-            }
-            
+                
         } #end for loop over all level combinations
 
          # combine estimates + SEs into single matrix - store in list
@@ -724,48 +714,13 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
             
     } #end for loop over profile effects      
 
-### fix var-cov matrix
-    
-    ## #add in single sum corrections
-    vcov_prof <- varprob_mat %*% vcov_mat_prof + t(varprob_mat %*% vcov_mat_prof) + vcov_mat_prof
-  
-    ## ## too slow!!
-    ## vcov_test <- vcov_prof
-    ## non_zero_rows <- unlist(sapply(rownames(varprob_mat),function(x) if(sum(varprob_mat[x,]) != 0) x))
-    ## function(x,y,vcov) {
-    ##     out <- vcov[x,y]
-    ##     return(out)
-    ## }
-    ## cov.ij <- Vectorize(cov.ij,vectorize.args = c("x","y"))
-    ## function(e1,e2,varprob,vcov) {        
-    ##     non_zero_e1 <- names(varprob[e1,varprob[e1, ] != 0])
-    ##     non_zero_e2 <- names(varprob[e2,varprob[e2, ] != 0])
-    ##     out <- sum(outer(non_zero_e1,non_zero_e2,function(x,y) varprob[e1,x]*varprob[e2,y]*cov.ij(x,y,vcov_mat_prof)))
-    ##     return(out)
-    ## }
-    ## weights.ij <- Vectorize(weights.ij,vectorize.args = c("e1","e2"))
-    ## test <- outer(non_zero_rows,non_zero_rows,function(x,y) weights.ij(x,y,varprob_mat))
-    
-    #final modifications for var-cov matrix (double sum corrections)
-    #these only exist when both variables have depends terms
-    #so only modify previously modified variables
-    if (length(covariance_list) > 0) {
-            #loop over each modified coefficient
-        for (x in 1:length(covariance_list)) {
-            var1 <- names(covariance_list)[x]
-            names1 <- as.character(covariance_list[[var1]][,1])
-            probs1 <- covariance_list[[var1]][,2]
-                #loop over all other modified coefficients, so i != j
-            for (y in 1:length(covariance_list)) {
-                var2 <- names(covariance_list)[y]
-                names2 <- as.character(covariance_list[[var2]][,1])
-                probs2 <- covariance_list[[var2]][,2]
-                #loop over each one of interaction names for var1
-                for (z in 1:length(names1)) {
-                    vcov_prof[var1,var2] <- vcov_prof[var1,var2] + sum(probs1[z]*probs2*vcov_mat_prof[names1[z],names2])  
-                }
-            } 
-        }
+    ### fix var-cov matrix
+    vcov_prof <- suppressMessages(fix.vcov(varprob_mat,vcov_mat_prof))
+    #write in adjusted variances to output matrix
+    for (i in 1:length(estimates)) {
+        coef_names <- colnames(estimates[[i]])
+        variances <- sqrt(diag(vcov_prof)[coef_names])
+        estimates[[i]][2,] <- ifelse(is.na(estimates[[i]][1,]),NA,variances)
     }
 
     #determine term names for profile effects (no depends) to keep
@@ -815,7 +770,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                     all_levels[[effect]] <- levels(data[[effect]])[-1]
                     all_levels_coefs[[effect]] <- sapply(all_levels[[effect]],
                                                          function(x) {
-                                                             paste(effect, x, sep="")
+                                                             paste(c(effect,x), collapse="")
                                                          })
                 }
             }
@@ -832,7 +787,9 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
             # Initialize the results 
             results <- matrix(nrow=2, ncol = nrow(levels))
             rownames(results) <- c("Conditional Estimate", "Std. Error")
-            colnames(results) <- levels[,1]
+            colnames(results) <- coefs
+            #write NA to SE row to start
+            results[2,] <- NA
 
             #### find extra times when this effect is mentioned in full formula
             # only if anything related to profile var is involved
@@ -858,19 +815,12 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
             for(j in 1:nrow(levels)) {
                 
                 #figure out which level of inter we're doing
-                effect_level <- as.character(levels[j,1])
                 effect_level_coef <- coefs[j]
-
-                #get its beta and var-cov matrix
+                #get its beta 
                 initial_beta <- coefficients(lin.mod.full)[effect_level_coef]
-                if (effect_level_coef %in% colnames(vcov_mat_full)) {
-                    initial_var <- vcov_mat_full[effect_level_coef, effect_level_coef]
-                } else {
-                    initial_var <- NA
-                }
 
                 #make sure there is baseline support for this level combination
-                if (!is.na(initial_beta) & !is.na(initial_var)) {                   
+                if (!is.na(initial_beta)) {                   
                     for (effect1 in substrings[substrings %in% profile_vars]) {
                         #get effect base
                         effect_base1 <- levels(data[[effect1]])[1]
@@ -882,7 +832,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                         }                        
                         #if there's no support left, change beta and var to NA
                         if (nrow(base.subset) == 0) {
-                            initial_beta <- initial_var <- NA
+                            initial_beta <- NA
                             #and give a warning that you had to do it
                             warn_i <- warn_i + 1
                         }
@@ -891,7 +841,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                
                 # If initial_beta and initial_variance are not NA and there are depends
                 # proceed to add to beta and var
-                if (!is.na(initial_beta) & !is.na(initial_var) & length(all_depends) > 0) {
+                if (!is.na(initial_beta) & length(all_depends) > 0) {
 
                     #get the slice of design array J associated with baseline and inter level
                     #profile variables only!
@@ -907,12 +857,6 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                     }
                     eval(call("<-", Quote(J_baseline), J_base_call))
                     eval(call("<-", Quote(J_effect), J_effect_call))
-
-                    # Initialize some vectors to store interactions and probabilities
-                    interaction_probabilities <- c()
-                    interaction_names <- c()
-                    covariance_names <- c()
-                    covariance_probs <- c()
   
                     #### loop over dependencies for all components of effect
                     for(k in 1:length(all_depends)) {
@@ -924,7 +868,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                         substrings_d <- substrings_d[!is.element(substrings_d,substrings)]
                         all_depend_coefs <- list()
                         for (sub in substrings_d) {
-                            all_depend_coefs[[sub]] <-  sapply(levels(data[[sub]]), function(x) paste(sub, x,sep=""))
+                            all_depend_coefs[[sub]] <-  sapply(levels(data[[sub]]), function(x) paste(c(sub,x),collapse=""))
                         }
                         all_depend_levels <- expand.grid(all_depend_coefs)
                         substrings_l <- strsplit(effect_level_coef,":")[[1]]
@@ -937,7 +881,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                         all_depend_level_coefs <- apply(all_depend_levels, 1, function(x) paste(x,collapse=":"))
                             
                        #baseline support for depend attribute level in inter
-                        if (!(is.null(dim(J_baseline)))){
+                        if (!(is.null(dim(J_baseline)))) {
                             baseline_support <- apply(J_baseline,substrings_d,sum)
                         } else {
                             baseline_support <- J_baseline
@@ -957,66 +901,23 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
                         all_depend_level_coefs <- all_depend_level_coefs[!is.na(lin.mod.full$coefficients[all_depend_level_coefs])]
                         varprob_mat[effect_level_coef,all_depend_level_coefs] <- as.numeric(joint_prob[all_depend_level_coefs])/as.numeric(sum(joint_prob))
                         
-                        ## If there are non-null # of depend-level-coefs (because R doesn't handle for 1:0 correctly)
-                        if (length(all_depend_level_coefs) != 0){
-                          ##### loop over levels of depends attribute
-                          #baselines will omit automatically because coefs are NA
-                          for (z in 1:length(all_depend_level_coefs)) {
-  
-                              #coefficient name that goes with this effect level & depend level
-                              depend_level_coef <- all_depend_level_coefs[z] 
-                              #calculate probabilities for this effect and depend level 
-                              var_prob <- joint_prob[depend_level_coef]
-                              var_prob <- as.numeric(var_prob)/as.numeric(sum(joint_prob))
-                                  
-                              #now add interaction beta and variance to initial 
-                              if (!is.na(lin.mod.full$coefficients[depend_level_coef])) {
-                                  if (!is.na(vcov_mat_full[depend_level_coef,depend_level_coef]) & !is.na(vcov_mat_full[effect_level_coef, depend_level_coef])) {
-                                      # add probabilities to initial_beta
-                                      initial_beta <- initial_beta +
-                                          var_prob*lin.mod.full$coefficients[depend_level_coef]
-                                      # add variance + covariance terms too
-                                      initial_var <- initial_var + (var_prob^2)*vcov_mat_full[depend_level_coef,depend_level_coef] +  2*(var_prob)*vcov_mat_full[effect_level_coef, depend_level_coef]
-                                          
-                                      # add probabilities and names to compute covariances
-                                      interaction_probabilities <- c(interaction_probabilities, var_prob)
-                                      interaction_names <- c(interaction_names, depend_level_coef)
-                                      #and across different variables
-                                      covariance_probs <- c(covariance_probs,var_prob)
-                                      covariance_names <- c(covariance_names,depend_level_coef)
-                                          
-                                  }
-                              } #end if that added beta & var, cov       
-                          } #end loop over levels of dependent attribute
-                      } #end for loop over different dependent attributes
-                    }
-                    # after going through all levels of the depends and all dependent attributes
-                    # add remaining covariance terms to the parameter variance 
-                    if (length(interaction_probabilities) > 1) {
-                            #loop over all depend attributes 1 to N-1
-                        for (x in 1:(length(interaction_probabilities) - 1)) {
-                                #loop over depend attributes one ahead of previous to the end
-                            for (y in (x+1):(length(interaction_probabilities))) {
-                                initial_var <- initial_var + 2*interaction_probabilities[x]*interaction_probabilities[y]*vcov_mat_full[interaction_names[x], interaction_names[y]]
-                            }
-                        }
-                    } #end if has more than 1 depend levels and/or depend attributes
+                        ## If there are non-null # of depend-level-coefs
+                        if (length(all_depend_level_coefs)) {
+                           #calculate probabilities for this effect and depend level 
+                            var_prob <- joint_prob[all_depend_level_coefs]
+                            var_prob <- as.numeric(var_prob)/as.numeric(sum(joint_prob))
+                            # add weighted beta to initial_beta
+                            depend_betas <- lin.mod.full$coefficients[all_depend_level_coefs]
+                            initial_beta <- sum(initial_beta,var_prob*depend_betas, na.rm=T)
+                        }        
+                        
+                    } #end for loop over different dependent attributes
 
-                    #add names of depend levels and their var probs to list
-                    #if there are any that is
-                    if (!is.null(covariance_probs)) {
-                        covariance_list[[effect_level_coef]] <- data.frame(covariance_names,covariance_probs)
-                    }
                 } #end if initial beta and var are NA, has depends
                 
-                # Store effect and standard error estimates
+                # Store effect estimates
                 results[1,j] <- initial_beta
-                if (!is.na(initial_var)) {
-                    results[2,j] <- sqrt(initial_var)
-                } else {
-                    results[2,j] <- NA
-                }
-                
+
             } #end for loop over all level combinations
 
             # combine estimates + SEs into single matrix - store in list
@@ -1024,29 +925,13 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
             
         } #end for loop over respondent related effects      
 
-        ## #add in single sum corrections
-        vcov_resp <- varprob_mat %*% vcov_mat_full + t(varprob_mat %*% vcov_mat_full) + vcov_mat_full
-
-       #final modifications for var-cov matrix
-       #these only exist when both variables have depends terms
-       #so only modify previously modified variables
-        if (length(covariance_list) > 0) {
-            #loop over each modified coefficient
-            for (x in 1:length(covariance_list)) {
-                var1 <- names(covariance_list)[x]
-                names1 <- as.character(covariance_list[[var1]][,1])
-                probs1 <- covariance_list[[var1]][,2]
-                #loop over all other modified coefficients, so i != j
-                for (y in 1:length(covariance_list)) {
-                    var2 <- names(covariance_list)[y]
-                    names2 <- as.character(covariance_list[[var2]][,1])
-                    probs2 <- covariance_list[[var2]][,2]
-                    #loop over each one of interaction names for var1
-                    for (z in 1:length(names1)) {
-                        vcov_resp[var1,var2] <- vcov_resp[var1,var2] + sum(probs1[z]*probs2*vcov_mat_full[names1[z],names2])  
-                    }
-                } 
-            }
+        ##fix variance-covariance matrix
+        vcov_resp <- suppressMessages(fix.vcov(varprob_mat,vcov_mat_full))
+        #write in adjusted variances
+        for (i in 1:length(conditional.estimates)) {
+            coef_names <- colnames(conditional.estimates[[i]])
+            variances <- sqrt(diag(vcov_resp)[coef_names])
+            conditional.estimates[[i]][2,] <- ifelse(is.na(conditional.estimates[[i]][1,]), NA, variances)
         }
 
         ###terms to keep (no depends)
@@ -1095,9 +980,8 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
     for (k in unique_vars) {
         if (class(data[[k]]) == "factor") {
             output$baselines[[k]] <- levels(data[[k]])[1]
-        } else {
+        } else if (class(data[[k]]) == "numeric") {
              output$continuous[[k]] <- quantile(model.matrix(form,data)[,k], probs=c(0.25,0.5,0.75), na.rm=T)
-            #output$continuous[[k]] <- quantile(data[[k]],  probs=c(0.25,0.5,0.75),na.rm=T)
         }
     }
 
@@ -1130,6 +1014,116 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
     return(output)
 }
 
+###############################################################################
+
+## Getting conditional estimates given (1) AMCE object
+## (2) LIST containing levels at which conditional effects will be calculated
+## (3) NAME of current conditional variable
+## (4) VALUE of current level of current conditioning variable
+## (5) NAME of profile attribute being modified by conditioning variable
+
+#############################################################################
+
+get.conditional.effects <- function(object, conditional.levels, current.effect, current.level, mod.var) {
+    
+    #amce object
+    amce_obj <- object
+    #make dummy data and set in base levels
+    cond.data <- amce_obj$data
+    #set factor vars to baselines
+    for (var in names(amce_obj$baselines)) {
+        cond.data[[var]] <- amce_obj$baselines[[var]]
+    }
+    #set in conditional vars to their first given level
+    for (var in names(conditional.levels)) {
+        cond.data[[var]] <- conditional.levels[[var]][1]
+    }        
+    #set current effect to current level
+    cond.data[[current.effect]] <- current.level
+
+     #original levels of conditional vars
+    orig.levels <- sapply(all.vars(amce_obj$cond.formula)[-1] [all.vars(amce_obj$cond.formula)[-1] %in% names(amce_obj$baselines)], function(x) levels(amce_obj$data[[x]]), simplify=F)
+     #coefficients associated with conditional estimates base term
+    cond.base <- unlist(sapply(amce_obj$respondent.varying,USE.NAMES = F, function(x) colnames(amce_obj$cond.estimates[[x]])))
+    #estimated coefficients, adding 0 for intercept
+    cond.beta <- c(0,do.call(cbind,amce_obj$cond.estimates)[1,])
+
+    #blank output
+    estimates.vector <- c()
+    error.vector <- c()
+    names.vector <- c()
+    
+    #quick covariance getting function
+    cov.ij <- function(var1,var2) {
+        out <- pred_mat[var1]*pred_mat[var2]*amce_obj$vcov.resp[var1,var2]
+        return(out)
+    }
+    cov.ij <- Vectorize(cov.ij,vectorize.args = c("var1","var2"))
+
+    #function for NA multiplication to be used in special cases
+    na.multiply <- function(x,y) {
+        vec <- c(x,y)
+        #If either is NA and other is 0, return 0
+        if (any(is.na(vec)) && vec[!is.na(vec)] == 0) {
+            out <- 0
+        } else {
+            #otherwise normal (so 1*NA = NA)
+            out <- x*y
+        }
+    }
+    na.multiply <- Vectorize(na.multiply,vectorize.args = c("x","y"))
+    
+    # split up modified variable
+    mod_vars <- strsplit(mod.var,":")[[1]]
+    # loop over levels
+    for (mod_coef in colnames(amce_obj$cond.estimates[[mod.var]])) {
+        ## (1) Edit conditional data
+        # split level coefficient into components
+        mod_coefs <- strsplit(mod_coef,":")[[1]]
+        # edit cond data to fit this level
+        for (x in 1:length(mod_coefs)) {
+            mod_lev <- sub(mod_vars[x],"",mod_coefs[x])            
+            cond.data[[mod_vars[x]]] <- mod_lev
+        }
+        ## (2) Make model matrix
+        pred_mat <- model.matrix(amce_obj$cond.formula,cond.data,xlev = orig.levels)
+        ## (3) Turn off base term for this conditional var
+        turn_off <- rep(1,ncol(pred_mat))
+        names(turn_off) <- colnames(pred_mat)         
+        turn_off[cond.base] <- 0
+        # Use to turn off terms in pred_mat that only contain respondent varying items
+        pred_mat <- pred_mat[1,]*turn_off
+        ## (4) Calculate coefficient and SE
+        # (a) Coefficient
+        if (!any(is.na(cond.beta))) {
+            pred_val <- sum(pred_mat*cond.beta)
+        } else {
+            #otherwise use special function
+            pred_val <- sum(na.multiply(pred_mat,cond.beta))
+        }
+        # (b) SE
+        if (!is.na(pred_val)) {     
+            #variable names sans intercept
+            vars <- colnames(amce_obj$vcov.resp)[2:ncol(amce_obj$vcov.resp)]
+            #all other covariance combinations
+            all_cov <- outer(vars,vars,FUN= function(x,y) cov.ij(x,y))
+            pred_se <- sqrt(sum(all_cov))
+        } else {
+            pred_se <- NA
+        }
+        ## And print out
+        estimates.vector <- c(estimates.vector,pred_val)
+        error.vector <- c(error.vector,pred_se)
+        names.vector <- c(names.vector,mod_coef)
+    }
+
+    #return list of modified coefficient estimates and se's
+    names(estimates.vector) <- names(error.vector) <- names.vector
+    out <- rbind(estimates.vector,error.vector)
+    return(out)
+
+}
+
 ############################################################
 ## summary function for results of main AMCE function
 ############################################################
@@ -1140,8 +1134,9 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
 # ... in the case of continuous, levels otherwise
 # ... can be given manual names by naming entries
 # Note that must be NAMED LIST, entry name is the respondent.varying effect
-
-summary.amce <- function(object, covariate.values=NULL,  ...) {
+#' @method summary amce
+#' @export
+summary.amce <- function(object, covariate.values=NULL, ...) {
     amce_obj <- object
 
 ######################### administrative section
@@ -1151,13 +1146,8 @@ summary.amce <- function(object, covariate.values=NULL,  ...) {
     # Create header of data.frame
     header <- c("Attribute", "Level", "Estimate", "Std. Err", "z value", "Pr(>|z|)", " ")
 
-    #more than 1 resp variable warning
-    if (length(amce_obj$respondent.varying) > 1) {
-        warning("Warning: More than 1 respondent-varying characteristic detected. Conditional estimates will be presented varying only one characteristic at time while the other is held at 0 (if continuous) or its base (if factor).")
-    }
-
-    #checks on user-supplied covariate values
-    if(!is.null(covariate.values)) {
+    #checks on user-supplied covariate values (values at which conditional effects are calculated)
+    if (!is.null(covariate.values)) {
         #clean variable names
         names(covariate.values) <- clean.names(names(covariate.values))
         for (i in 1:length(covariate.values)) {
@@ -1171,10 +1161,14 @@ summary.amce <- function(object, covariate.values=NULL,  ...) {
                 if (any(!covariate.values[[i]] %in% levels(amce_obj$data[[names(covariate.values)[i]]]))) {
                     stop(paste("Error: some level(s) of variable",names(covariate.values)[i],"do not appear in data."))
                 }
+                if (is.null(names(covariate.values[[i]]))) {
+                    cov.names <- sapply(covariate.values[[i]],function(x) paste(names(covariate.values)[i],x,sep=""))
+                    names(covariate.values[[i]]) <- sapply(cov.names,USE.NAMES = F, function(x) amce_obj$user.levels[x])
+                }                
             }
         }
     }
- 
+
 ##################### reporting unconditional results
 
     #all attribute estimates
@@ -1185,7 +1179,7 @@ summary.amce <- function(object, covariate.values=NULL,  ...) {
     all_acie <- grep(":",all_prof,value=T,invert=F)
 
      #How many AMCE?
-     namce <-  sum(sapply(all_amce,function(x) length(unlist(amce_obj$estimates[[x]]))/2))
+    namce <-  sum(sapply(all_amce,function(x) length(unlist(amce_obj$estimates[[x]]))/2))
     # Create results matrix for AMCE only
     summary_results[["amce"]] <- matrix(nrow= namce, ncol=length(header))
     colnames(summary_results[["amce"]]) <- header
@@ -1302,34 +1296,31 @@ summary.amce <- function(object, covariate.values=NULL,  ...) {
     
     # If there are respondent varying attributes, add estimates at levels/quantiles
     if (length(amce_obj$cond.estimates) > 0) {
-
-        # Extract vectors of betas for all coefficients
-        beta_vector <- do.call(cbind,amce_obj$cond.estimates)[1,]
-        #get correct coefficient names
-        all_coef <- c()
-        for (var in names(amce_obj$cond.estimates)) {
-            prof_vars <- strsplit(var, ":")[[1]]
-            for (lev in colnames(amce_obj$cond.estimates[[var]])) {
-                prof_levs <- strsplit(lev, ":")[[1]]
-                orig_profs <- c()
-                for (v in 1:length(prof_vars)) {
-                    #continuous component keeps simple name
-                    if (prof_vars[v] == prof_levs[v]) {
-                        orig_profs[v] <- prof_vars[v]
-                    } else  {
-                        #factor component has 2 parts, var and level
-                        orig_profs[v] <- paste(c(prof_vars[v], prof_levs[v]), collapse="")
-                    }
+            
+        ### Setting covariate values at which conditional effects will be calculated
+        if (is.null(covariate.values)) covariate.values <- list()
+       #get levels at which conditional effects will be calculated if no values given or install given names
+        #straight levels, NOT coefficient names
+        if (any(!amce_obj$respondent.varying %in% names(covariate.values))) {
+            for (var in amce_obj$respondent.varying[!amce_obj$respondent.varying %in% names(covariate.values)]) {
+                if (var %in% names(amce_obj$baselines)) {
+                    # if it's a factor get levels from column names
+                    cov.vals <- colnames(amce_obj$cond.estimates[[var]])
+                    #remove effect part
+                    covariate.values[[var]] <- sub(var,"",cov.vals)
+                    #add baseline 
+                    covariate.values[[var]]  <- c(amce_obj$baselines[[var]],covariate.values[[var]])
+                    #names from user input
+                    cov.vals <- c(paste(var,amce_obj$baselines[[var]],sep=""),cov.vals)
+                    names(covariate.values[[var]]) <-  sapply(cov.vals, USE.NAMES = F, function(x) amce_obj$user.levels[[x]])
+                } else {
+                    # otherwise get summary information from "continuous"
+                    covariate.values[[var]] <- amce_obj$continuous[[var]]
                 }
-                orig_prof <- paste(orig_profs,collapse=":")
-                all_coef <- c(all_coef,orig_prof)
             }
         }
-        names(beta_vector) <- all_coef
-        #also get true levels for all factors in the cond.formula
-        xlevs <- sapply(all.vars(amce_obj$cond.formula)[-1][all.vars(amce_obj$cond.formula)[-1] %in% names(amce_obj$baselines)],function(x) levels(amce_obj$data[[x]]), simplify = F)
 
-        #empty vectors for table key
+        #empty vectors for table key        
         tab_name_amce <- c()
         tab_var_amce  <- c()
         tab_val_amce  <- c()
@@ -1351,7 +1342,7 @@ summary.amce <- function(object, covariate.values=NULL,  ...) {
             #figure out profile attributes these refer to
             all_mod <- unlist(sapply(all_resp,function(x) {
                 subs <- strsplit(x,":")[[1]]
-                subs <- subs[which(is.element(subs,all_prof))]
+                subs <- subs[is.element(subs,all_prof)]
                 if (length(subs) > 0) paste(subs,collapse=":")
             }))
             #just unique ones
@@ -1371,51 +1362,18 @@ summary.amce <- function(object, covariate.values=NULL,  ...) {
                 nacie <- sum(sapply(mod_acie,function(x) length(unlist(amce_obj$estimates[[x]]))/2))
             }
 
-            #get raw levels default for this effect if no values given or install given names
-            raw_levels <- c()
-            if (is.null(covariate.values[[effect]])) {
-                if (effect %in% names(amce_obj$baselines)) {
-                    # if it's a factor get levels, adding baseline
-                    raw_levels <- colnames(amce_obj$cond.estimates[[effect]])
-                    raw_levels <- c(amce_obj$baselines[[effect]],raw_levels)
-                } else {
-                    # otherwise get summary information from "continuous"
-                    raw_levels <- amce_obj$continuous[[effect]]
-                }
-            } else {
-                raw_levels <- covariate.values[[effect]]
-            }
-
             ######## Now loop over levels/quantiles of "effect"
-            for (i in 1:length(raw_levels)) {
+            for (i in 1:length(covariate.values[[effect]])) {
 
-                # get the appropriate model matrix for prediction
-                # first, make a data_dummy data matrix
-                data_dummy <- amce_obj$data
-                # if continuous, setting value of "effect" using fake data matrix
-                # also name of level; if continuous just effect name
-                if (effect %in% names(amce_obj$continuous)) {
-                    #name of "level" is just effect name
-                    resp_lev <- effect
-                    #as is original variable name
-                    orig_resp <- effect
-                    #how to print level name
-                    if (!is.null(names(raw_levels))) {
-                        print_resp_lev <- names(raw_levels)[i]
-                    } else {
-                        print_resp_lev <- raw_levels[i]
-                    }
+                # get name of coefficient and level; also how to print level
+                cond_lev <- covariate.values[[effect]][i]
+                #how to print level name
+                if (!is.null(names(covariate.values[[effect]]))) {
+                    print_cond_lev <- names(covariate.values[[effect]])[i]
                 } else {
-                    #if resp var is a factor set level
-                    resp_lev <- raw_levels[i]
-                    # make original var name
-                    orig_resp <- paste(c(effect,resp_lev),collapse="")
-                    #printed name from user input
-                    print_resp_lev <- amce_obj$user.levels[[resp_lev]]
+                    print_cond_lev <- covariate.values[[effect]][i]
                 }
-                #set value of in data
-                data_dummy[[effect]] <- raw_levels[i]
-                
+            
                 #### prep AMCE results
                 # make results matrices
                 entry_name_amce <- paste(c(effect,i,"amce"),collapse="")
@@ -1427,7 +1385,7 @@ summary.amce <- function(object, covariate.values=NULL,  ...) {
                 #edit table key
                 tab_name_amce <- c(tab_name_amce,entry_name_amce)
                 tab_var_amce <- c(tab_var_amce, effect)
-                tab_val_amce <- c(tab_val_amce, print_resp_lev)
+                tab_val_amce <- c(tab_val_amce, print_cond_lev)
 
                 #### prep ACIE results, if any
                 if (length(mod_acie) > 0) {
@@ -1441,21 +1399,20 @@ summary.amce <- function(object, covariate.values=NULL,  ...) {
                     #edit table key
                     tab_name_acie <- c(tab_name_acie,entry_name_acie)
                     tab_var_acie <- c(tab_var_acie, effect)
-                    tab_val_acie <- c(tab_val_acie, print_resp_lev)
+                    tab_val_acie <- c(tab_val_acie, print_cond_lev)
                 }
 
                 # loop over all attribute effects modified by "effect"
-                for (prof_var in all_mod) {
-
+                for (mod_var in all_mod) {
                     #get name to print
-                    prof_vars <- strsplit(prof_var, ":")[[1]]
+                    mod_vars <- strsplit(mod_var, ":")[[1]]
                     print_vars <- c()
-                    for (var in prof_vars) {
+                    for (var in mod_vars) {
                         print_vars <- c(print_vars,amce_obj$user.names[[var]])  
                     }
-                    print_prof_var <- paste(c(print_vars),collapse=":")
+                    print_mod_var <- paste(c(print_vars),collapse=":")
                     # Set entry to add to 
-                    if (grepl(":",prof_var)) {
+                    if (grepl(":",mod_var)) {
                         #set entry name
                         entry_name <- entry_name_acie
                         #which index?
@@ -1465,71 +1422,38 @@ summary.amce <- function(object, covariate.values=NULL,  ...) {
                         #which index?
                         index <- amce_i
                     }
-
+                    #calculate conditional effects
+                    cond.effects <- get.conditional.effects(amce_obj,covariate.values,effect,cond_lev,mod_var)
                     #loop over the associated betas 
-                    for (p in 1:ncol(amce_obj$cond.estimates[[prof_var]])) {
-
-                        #name of level we're modifying
-                        prof_lev <- colnames(amce_obj$cond.estimates[[prof_var]])[p]
-                        prof_levs <- strsplit(prof_lev, ":")[[1]]
+                    for (p in 1:ncol(amce_obj$cond.estimates[[mod_var]])) {
+                        #level to be modified
+                        mod_coef <- colnames(amce_obj$cond.estimates[[mod_var]])[p]
                         #how to print it
+                        mod_coefs <- strsplit(mod_coef, ":")[[1]]        
                         print_levs <- c()
-                        for (lev in prof_levs) {
-                            print_levs <- c(print_levs, amce_obj$user.levels[[lev]])
+                        for (v in 1:length(mod_coefs)) {
+                            print_levs <- c(print_levs, amce_obj$user.levels[[mod_coefs[v]]])
                         }
-                        print_prof_level <- paste(print_levs,sep="",collapse=":")
-                        #put together var and level for original name
-                        orig_profs <- c()
-                        for (v in 1:length(prof_vars)) {
-                            orig_profs[v] <- paste(c(prof_vars[v], prof_levs[v]), collapse="")
-                            data_dummy[[prof_vars[v]]] <- prof_levs[v]
-                        }
-                        orig_prof <- paste(orig_profs,collapse=":")
-                        
-                        #use modified data_dummy to make model matrix, preserving old levels
-                        pred_mat <- model.matrix(amce_obj$cond.formula,data_dummy,xlev = xlevs)
-                        #all column names containing original profile var name
-                        pred_cols <- grep(paste(c("(?=.*", orig_resp, ")(?=.*", orig_prof, ")"), collapse=""),colnames(pred_mat) ,value=T,perl=T)                            
-                        #make sure it contains no unrelated vars
-                        pred_cols <- unlist(sapply(pred_cols,function(x) {
-                            subs <- strsplit(x,":")[[1]]
-                            subs <- subs[!is.element(subs,orig_profs)]
-                            subs <- subs[!grepl(orig_resp,subs)]
-                            if(length(subs) < 1) x
-                        }))
-                        #add in base modified attribute
-                        pred_cols <- c(orig_prof,pred_cols)
-                        #but no duplicates
-                        pred_cols <- unique(pred_cols)
-
-                        #calculation for coefficient and SE
-                        beta_inter <- pred_mat[1,pred_cols] %*% beta_vector[pred_cols]
-                        if (!is.na(beta_inter)) {
-                            #gather covariance terms; other occurences dealt with in main fxn
-                            all_cov <- c()
-                            for (a in 1:length(pred_cols)) {
-                                for (b in 1:length(pred_cols)) {
-                                    all_cov <- c(all_cov,pred_mat[1,pred_cols[a]]*pred_mat[1,pred_cols[b]]*amce_obj$vcov.resp[pred_cols[a], pred_cols[b]])
-                                }
-                            }
-                            var_inter <- sum(all_cov)
-                            #modified zscr and pval
-                            se_inter <- sqrt(var_inter)
-                            zscr <- beta_inter/se_inter
+                        print_mod_level <- paste(print_levs,sep="",collapse=":")
+                        #get beta and SE
+                        cond_beta <- cond.effects[1,mod_coef]
+                        cond_se <- cond.effects[2,mod_coef]
+                        #modified zscr and pval
+                        if (!is.na(cond_beta)) {
+                            zscr <- cond_beta/cond_se
                             pval <- 2*pnorm(-abs(zscr))
                         } else {
-                            se_inter <- zscr <- pval <- NA
+                            zscr <- pval <- NA
                         }
-
                         #write results
-                        summary_results[[entry_name]][index,1] <- print_prof_var
-                        summary_results[[entry_name]][index,2] <- print_prof_level
-                        summary_results[[entry_name]][index,3] <- beta_inter
-                        summary_results[[entry_name]][index,4] <- se_inter
+                        summary_results[[entry_name]][index,1] <- print_mod_var
+                        summary_results[[entry_name]][index,2] <- print_mod_level
+                        summary_results[[entry_name]][index,3] <- cond_beta
+                        summary_results[[entry_name]][index,4] <- cond_se
                         summary_results[[entry_name]][index,5] <- zscr
                         summary_results[[entry_name]][index,6] <- pval
                         # Stars!
-                        if (!is.na(beta_inter)) {
+                        if (!is.na(cond_beta)) {
                             if (pval < .001) {
                                 summary_results[[entry_name]][index,7] <- "***"
                             } else if (pval < .01) {
@@ -1543,7 +1467,6 @@ summary.amce <- function(object, covariate.values=NULL,  ...) {
                             summary_results[[entry_name]][index,7] <- ""
                         }
                             index <- index + 1
-
                     } #end loop over levels of profile var
                     #advance appropriate index
                     if (grepl(":",effect)) {
@@ -1601,7 +1524,8 @@ summary.amce <- function(object, covariate.values=NULL,  ...) {
 ############################################################
 ## print summary function for results of main AMCE function
 ############################################################
-
+#' @method print summary.amce
+#' @export
 print.summary.amce <- function(x, digits=5, ...) {
     summary_result <- x
 
@@ -1623,9 +1547,23 @@ print.summary.amce <- function(x, digits=5, ...) {
     #add extra tables for AMCE interactions with respondent varying
     if (!is.null(summary_result$table_values_amce)) {
         if (nrow(summary_result$table_values_amce) > 0) {
+            all.vars <- unique(summary_result$table_values_amce[,2])
             for (i in 1:nrow(summary_result$table_values_amce)) {
+                #How to print changing level
+                print.lev <- paste(c("Conditional AMCE's ","(", summary_result$table_values_amce[i,2], " = ", summary_result$table_values_amce[i,3]), collapse="")
+                #How to print stable level 
+                if (length(all.vars) > 1) {
+                    this.var <- summary_result$table_values_amce[i,2]
+                    other.vars <- all.vars[!is.element(all.vars,this.var)]
+                    for (x in other.vars) {
+                        lev <- summary_result$table_values_amce[summary_result$table_values_amce[ ,"Level.Name"] == x, "Level.Value"][1]
+                        print.lev <- paste(c(print.lev,"; ",x," = ",lev),collapse="")
+                    }
+                }
+                print.lev <- paste(c(print.lev,"):\n"),collapse="")
+
                 cat("------------------------------------------------------------\n")
-                cat(paste(c("Conditional AMCE's","(",summary_result$table_values_amce[i,2],"=", summary_result$table_values_amce[i,3],"):\n"),collapse=" "))
+                cat(print.lev)
                 cat("------------------------------------------------------------\n")
                 print(summary_result[[summary_result$table_values_amce[i,1]]], digits=digits, row.names=F)
                 cat("---\n")
@@ -1709,7 +1647,6 @@ print.summary.amce <- function(x, digits=5, ...) {
     }
 
 }
-
 ########################################################
 # plot amce function
 #######################################################
@@ -1724,7 +1661,8 @@ print.summary.amce <- function(x, digits=5, ...) {
 # with no given facet and no respondent vars, this choice is irrelevant (unconditional only)
 # with no given facet and respondent vars, default is all but can choose just unconditional or interaction
 # with a facet given (respondent or otherwise), similarly can choose
-
+#' @method plot amce
+#' @export 
 plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xlim=NULL, breaks=NULL, labels=NULL, attribute.names = NULL, level.names = NULL, label.baseline = TRUE, text.size=11, text.color = "black", point.size = .5, dodge.size=0.9, plot.theme = NULL, plot.display = "all", facet.names = NULL, facet.levels = NULL, ...) {
     
     # You need ggplot2
@@ -1737,35 +1675,31 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
     group <- NULL
     lower <- NULL
     upper <- NULL
+    var <- NULL
+    printvar <- NULL
+    facet <- NULL
     
 ############################## basic set-up: get attributes and levels
 
     # Extract raw attribute names from the amce_obj$estimates object
     raw_attributes <- names(amce_obj$estimates)
-    # Extract raw levels 
-    raw_levels <- list()
-    for(m in names(amce_obj$estimates)) {
-        raw_levels[[m]] <- colnames(amce_obj$estimates[[m]])
-    }
+    # Extract raw levels (coefficient names)
+    raw_levels <- lapply(amce_obj$estimates,colnames)
     
     # Determine baseline level for each effect estimate in raw_levels and append to beginning of each vector in raw_levels
     for (effect in names(raw_levels)) {
         effect_elements <- strsplit(effect, ":")[[1]]
         baseline_interactions <- c()
         for (elem in effect_elements) {
-            #if effect element is a factor variable get baseline
-            if (elem %in% names(amce_obj$baselines)) {
-                baseline_interactions <- c(baseline_interactions, amce_obj$baselines[[elem]])
-            } else {
-                #otherwise just add name of continuous variable
-                baseline_interactions <- c(baseline_interactions,elem)
-            }
+            # get baseline, as if coefficient name
+            base_coef <- paste(c(elem,amce_obj$baselines[[elem]]),collapse="")
+            baseline_interactions <- c(baseline_interactions,base_coef)
         }
         interaction_str <- paste(baseline_interactions,sep="",collapse=":")
         raw_levels[[effect]] <- c(interaction_str, raw_levels[[effect]]) 
     }
 
-############################## Incorporate and adjust user-input
+################################### Incorporate and adjust user-input: general
  
     # Convert ci to z-score
     if (ci < 1 & ci > 0) {
@@ -1774,6 +1708,8 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
         cat("Invalid confidence interval -- Defaulting to 95%")
         zscr <- qnorm(1- ((1-.95)/2))
     }
+
+################################### Incorporate and adjust user-input: naming    
     
     # Sanity check user-provided attribute.names against AMCE objects
     if (!is.null(attribute.names)) {
@@ -1802,6 +1738,28 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
         }
     }
 
+    # If no attribute name or changed to NULL, use initial user supplied names as attribute names
+    if (is.null(attribute.names)) {
+        attribute.names <- c()
+        for (attr in names(amce_obj$estimates)) {
+            attr_split <- strsplit(attr,":")[[1]]
+            attr_lookup <- paste(unlist(sapply(attr_split,function(x) amce_obj$user.names[x])), collapse=":")
+            attribute.names <- c(attribute.names,attr_lookup)
+        }
+    }
+
+    # If no level names make blank list
+    if (is.null(level.names)) level.names <- list()
+    # fill in blank list or missing levels, if any
+    if (any(!names(raw_levels) %in% names(level.names))) {
+        for (attr in names(raw_levels)[!names(raw_levels) %in% names(level.names)]) {
+            attr_split <- strsplit(raw_levels[[attr]],":")
+            level.names[[attr]] <- unlist(lapply(attr_split,function(x) paste(sapply(x,function(y) amce_obj$user.levels[y]),collapse=":")))
+        }
+    }
+
+################################### Incorporate and adjust user-input: facetting
+    
     # valid plot.display option?
     plot.display.opts <- c("all","unconditional","interaction")
     if (!is.element(plot.display,plot.display.opts)) {
@@ -1816,15 +1774,18 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
     }
 
     #check that they are in AMCE object
-    facet.names.check <- c()
-    for (facet.name in facet.names) {
-        if (!facet.name %in% names(amce_obj$estimates) & !facet.name %in% names(amce_obj$cond.estimates)) {
-            stop(paste(c("Error-- cannot find facet name",facet.name,"in AMCE object output."),collapse=" "))
-        } else {
-            facet.names.check <- c(facet.names.check,facet.name)
+    if (!is.null(facet.names)) {
+        facet.names.check <- c()
+        for (facet.name in facet.names) {
+            if (grepl(":",facet.name)) stop("Error-- cannot facet by interaction in current version.")
+            if (!facet.name %in% names(amce_obj$estimates) & !facet.name %in% names(amce_obj$cond.estimates)) {
+                stop(paste(c("Error-- cannot find facet name",facet.name,"in AMCE object output."),collapse=" "))
+            } else {
+                facet.names.check <- c(facet.names.check,facet.name)
+            }
         }
+        facet.names <- facet.names.check
     }
-    facet.names <- facet.names.check
 
     #if no facets but there are respondent varying characteristics, use those
     if ((is.null(facet.names)) & (length(amce_obj$respondent.varying) > 0) & (plot.display != "unconditional")) {
@@ -1859,18 +1820,57 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
                 }
                 #names from user input if none provided
                 if (is.null(names(facet.levels[[facet.name]]))) {
-                    names(facet.levels[[facet.name]]) <- sapply(facet.levels[[facet.name]], USE.NAMES = F, function(x) amce_obj$user.levels[[x]])
+                    fac.levs <- sapply(facet.levels[[facet.name]],function(x) paste(facet.name,x,sep=""))
+                    names(facet.levels[[facet.name]]) <- sapply(fac.levs, USE.NAMES = F, function(x) amce_obj$user.levels[[x]])
                 }
             } else if (is.null(names(facet.levels[[facet.name]]))) {
+                #not a factor and no names, just take level values
                 names(facet.levels[[facet.name]]) <- as.character(facet.levels[[facet.name]])
             }
         }
     }
 
+    #if user didn't give any levels, make blank list
+    if (is.null(facet.levels)) facet.levels <- list()
+    #input missing levels if any
+    if (any(!facet.names %in% names(facet.levels))) {
+        for (facet.name in facet.names[!facet.names %in% names(facet.levels)]) {
+            #if it's a factor, default facet levels are all levels
+            if (facet.name %in%  names(amce_obj$baselines)) {
+                if (facet.name %in% names(amce_obj$estimates)) {
+                    #if NOT respondent varying get levels and names from ESTIMATES
+                    fac.levs <- colnames(amce_obj$estimates[[facet.name]])
+                } else {
+                    #get levels and names from COND.ESTIMATES
+                    fac.levs <- colnames(amce_obj$cond.estimates[[facet.name]])
+                }
+                # get pure levels
+                facet.levels[[facet.name]] <- sub(facet.name,"",fac.levs)
+                #add in baseline 
+                facet.levels[[facet.name]] <- c(amce_obj$baselines[[facet.name]], facet.levels[[facet.name]])
+                #names from user input
+                fac.levs <- c(paste(facet.name,amce_obj$baselines[[facet.name]],sep=""),fac.levs)
+                names(facet.levels[[facet.name]])  <- sapply(fac.levs, USE.NAMES = F,function(x) amce_obj$user.levels[[x]])
+            } else if (facet.name %in% names(amce_obj$continuous)) {
+                #if it's continuous, default is quantiles
+                facet.levels[[facet.name]] <-  amce_obj$continuous[[facet.name]]
+            }             
+        }
+    }
+
+    #the equivalent of summary's "covariate values" are respondent-varying entries
+    #so get just those
+    covariate.values <- list()
+    for (var in names(facet.levels)) {
+        if (var %in% amce_obj$respondent.varying) {
+            covariate.values[[var]] <- facet.levels[[var]]
+        }
+    }
+    
 ################################### Compile estimates into plottable objects
 
     #blank data frame for plot data
-    d <- data.frame(pe=c(), se=c(), upper=c(), lower=c(), var=c(), group=c(), facet=c())
+    d <- data.frame(pe=c(), se=c(), upper=c(), lower=c(), var=c(), printvar = c(), group=c(), facet=c())
   
 ############# Unconditional estimates
 
@@ -1898,41 +1898,23 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
             #get raw attribute name
             attr_name <- raw_attributes[i]
             #get attribute name to print
-            if (!is.null(attribute.names)) {
-                print_attr_name <- attribute.names[which(names(amce_obj$estimates) == raw_attributes[i])]
-            } else {
-                variates <- strsplit(attr_name,":")[[1]]
-                var_list <- c()
-                for (var in variates) {
-                    var_list <- c(var_list, amce_obj$user.names[[var]])
-                }
-                print_attr_name <- paste(var_list,collapse=":")
-            }
+            print_attr_name <- attribute.names[which(names(amce_obj$estimates) == raw_attributes[i])]
             #set up basic group header and add to plot
-            d_head <- data.frame(pe=NA, se=NA, upper=NA, lower=NA, var=paste(print_attr_name, ":", sep=""), group="<NA>",facet=uncond.facet.name)
+            d_head <- data.frame(pe=NA, se=NA, upper=NA, lower=NA, var= attr_name, printvar=paste(print_attr_name, ":", sep=""), group="<NA>",facet=uncond.facet.name)
             d <- rbind(d,d_head)    
             #iterate over levels
             for (j in 1:length(raw_levels[[attr_name]])) {
                 #raw level name
                 level_name <- raw_levels[[attr_name]][j]
                 #get level name to print
-                if (!is.null(level.names) && (attr_name %in% names(level.names))) {
-                    print_level_name <- level.names[[attr_name]][j]
-                } else {
-                    levels <- strsplit(level_name,":")[[1]]
-                    lev_list <- c()
-                    for (lev in levels) {
-                        lev_list <- c(lev_list, amce_obj$user.levels[[lev]])
-                    }
-                    print_level_name <- paste(lev_list,collapse=":") 
-                }
+                print_level_name <- level.names[[attr_name]][j]              
                 #if on the first level
                 if (j == 1) {
                     if (label.baseline) {
                         print_level_name <- paste("(Baseline = ",print_level_name,")",sep="")
                     }
                     #get the baseline and print a blank line
-                    d_lev <- data.frame(pe=NA, se=NA, upper=NA, lower=NA, var=paste("   ", print_level_name,sep=""), group=print_attr_name, facet=uncond.facet.name) 
+                    d_lev <- data.frame(pe=NA, se=NA, upper=NA, lower=NA, var=level_name, printvar=paste("   ", print_level_name,sep=""), group=print_attr_name, facet=uncond.facet.name) 
                 } else {
                     #retrieve estimate and SE
                     val_pe <- amce_obj$estimates[[attr_name]][1,level_name]
@@ -1941,7 +1923,7 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
                     upper_bnd <- val_pe + zscr*val_se
                     lower_bnd <- val_pe - zscr*val_se 
                     #make line to add to plot data
-                    d_lev <- data.frame(pe=val_pe, se=val_se, upper=upper_bnd, lower=lower_bnd, var=paste("   ", print_level_name,sep=""), group=print_attr_name, facet=uncond.facet.name)       
+                    d_lev <- data.frame(pe=val_pe, se=val_se, upper=upper_bnd, lower=lower_bnd, var=level_name, printvar=paste("   ", print_level_name,sep=""), group=print_attr_name, facet=uncond.facet.name)       
                 } #end if a baseline
                 #add to plot
                 d <- rbind(d,d_lev)
@@ -1954,78 +1936,11 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
     #Only if plot.display is all or conditional and we got a facet name from somehere
     if (plot.display != "unconditional" & !is.null(facet.names)) {
 
-        #if user didn't give any levels, make blank list
-        if (is.null(facet.levels)) facet.levels <- list()
-
         #loop over facets
         for (facet.name in facet.names) {    
 
             #how to print it
             print_facet_name <- amce_obj$user.names[[facet.name]]
-
-            #### get objects for estimates
-            if (facet.name %in% amce_obj$respondent.varying) {
-                #if respondent varying betas from conditional
-                estimate.source <- amce_obj$cond.estimates
-                #also get original levels for all factors in the cond.formula
-                xlevs <- sapply(all.vars(amce_obj$cond.formula)[-1] [all.vars(amce_obj$cond.formula)[-1] %in% names(amce_obj$baselines)], function(x) levels(amce_obj$data[[x]]), simplify=F)
-            } else { #if a facet var
-                #draw from unconditional estimates
-                estimate.source <- amce_obj$estimates
-            }
-            # Extract vectors of betas for all coefficients
-            beta.vector <- do.call(cbind,estimate.source)[1,]
-            # SE's
-            se.vector <- do.call(cbind,estimate.source)[2,]
-            #get correct coefficient names
-            all.coef <- c()
-            for (var in names(estimate.source)) {
-                prof_vars <- strsplit(var, ":")[[1]]
-                for (lev in colnames(estimate.source[[var]])) {
-                    prof_levs <- strsplit(lev, ":")[[1]]
-                    orig_profs <- c()
-                    for (v in 1:length(prof_vars)) {
-                        #continuous component keeps simple name
-                        if (prof_vars[v] == prof_levs[v]) {
-                            orig_profs[v] <- prof_vars[v]
-                        } else {
-                            #factor component has 2 parts, var and level
-                            orig_profs[v] <- paste(c(prof_vars[v], prof_levs[v]), collapse="")
-                        }
-                    }
-                    orig_prof <- paste(orig_profs,collapse=":")
-                    all.coef <- c(all.coef,orig_prof)
-                }
-            }
-            names(beta.vector) <- all.coef
-            names(se.vector) <- all.coef
-
-            #### get levels of facet name
-            #if not provided by user, get defaults
-            if (!is.element(facet.name,names(facet.levels))) {
-               #if it's a factor, default facet levels are all levels
-                if (facet.name %in%  names(amce_obj$baselines)) {
-                    #if NOT respondent varying get levels and names from ESTIMATES
-                    if (facet.name %in% names(amce_obj$estimates)) {
-                        facet.levels[[facet.name]] <- colnames(amce_obj$estimates[[facet.name]])
-                        #names from user input
-                        names(facet.levels[[facet.name]]) <- sapply(facet.levels[[facet.name]], USE.NAMES = F,function(x) amce_obj$user.levels[[x]])
-                    } else {
-                        #get levels and names from COND.ESTIMATES
-                        facet.levels[[facet.name]] <- colnames(amce_obj$cond.estimates[[facet.name]])
-                        #add in baseline!!
-                        facet.levels[[facet.name]] <- c(amce_obj$baselines[[facet.name]], facet.levels[[facet.name]])
-                        #names from user input
-                        names(facet.levels[[facet.name]]) <- sapply(facet.levels[[facet.name]], USE.NAMES = F,function(x) amce_obj$user.levels[[x]])
-                    }
-                } else if (facet.name %in% names(amce_obj$continuous)) {
-                    #if it's continuous, default is quantiles
-                    facet.levels[[facet.name]] <-  amce_obj$continuous[[facet.name]]
-                    #names stay as values, eg 25%
-                    names(facet.levels[[facet.name]]) <- names(amce_obj$continuous[[facet.name]])
-                } 
-            }
-            
             #### identify all REQUESTED terms involving facet name
             all_req_vars <- attr(terms(amce_obj$formula),"term.labels")
             all_mod <- unlist(sapply(all_req_vars,function(x) {
@@ -2045,27 +1960,20 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
             }
             #just unique ones
             all_mod <- unique(all_mod)
+      #Temp Bug Fixing
+      if (is.element(facet.name,names(amce_obj$estimates))) {
+        #if ACIE, then remove baseline of facet in the d dataset filling process
+        facet.start <- 2
+      } else {
+        #if conditional on respondent varying
+        facet.start <- 1
+      }
 
            #for each actual facet level make new set of plot data
-            for (k in 1:length(facet.levels[[facet.name]])) {
+            for (k in facet.start:length(facet.levels[[facet.name]])) {
 
-                # get the appropriate model matrix for prediction
-                # first, make a data.dummy data matrix
-                data.dummy <- amce_obj$data
                 # set level
-                if (facet.name %in% names(amce_obj$continuous)) {
-                    #name of "level" is just facet name
-                    resp_lev <- facet.name
-                    #as is original variable name
-                    orig_facet <- facet.name
-                } else {
-                    # if facet is a factor, get level
-                    resp_lev <- facet.levels[[facet.name]][k]
-                    # make original var name
-                    orig_facet <- paste(c(facet.name,resp_lev),collapse="")
-                }
-                #set level in data
-                data.dummy[[facet.name]] <- facet.levels[[facet.name]][k]
+                facet_lev <- facet.levels[[facet.name]][k]
                 #how to print facet level
                 if (is.element(facet.name,names(amce_obj$estimates))) {
                     #if ACIE
@@ -2076,114 +1984,70 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
                 }
 
                 #loop over variables to be modified
-                for (attr_name in all_mod) {
-                    #split into components
-                    variates <- strsplit(attr_name,":")[[1]]
-                    #get attribute name to print
-                    var_list <- c()
-                    for (var in variates) {
-                        var_list <- c(var_list, amce_obj$user.names[[var]])
-                    }
-                    if (!is.null(attribute.names)) {
-                        print_attr_name <- attribute.names[which(names(amce_obj$estimates) == attr_name)]
-                    } else {                       
-                        print_attr_name <- paste(var_list,collapse=":")
-                    }
+                for (mod_var in all_mod) {
+                    #how to print modified attribute
+                    print_attr_name <- attribute.names[which(names(amce_obj$estimates) == mod_var)]
                     #set up header to reflect base (non-facet) category
-                    d_head <- data.frame(pe=NA, se=NA, upper=NA, lower=NA, var=paste(print_attr_name, ":", sep=""), group="<NA>", facet=print_facet_level)
+                    d_head <- data.frame(pe=NA, se=NA, upper=NA, lower=NA,var=mod_var, printvar=paste(print_attr_name, ":", sep=""), group="<NA>", facet=print_facet_level)
                      #add new header
                     d <- rbind(d, d_head)
+                    #Get estimates
+                    if (facet.name %in% names(amce_obj$estimates)) {
+                         #figure out interaction name
+                        inter_coef <- paste(sort(c(mod_var,facet.name)),collapse = ":")
+						#get from unconditional estimates
+                        estimate.source <- amce_obj$estimates[[inter_coef]]
+                        estimate.source <- estimate.source[,grep(paste0(facet.name, facet_lev), colnames(estimate.source))]
+                    } else {
+                        #calculate from function if conditional
+                        estimate.source <- get.conditional.effects(amce_obj, covariate.values, facet.name, facet_lev, mod_var)
+                    }                 
 
+                    #split into components
+                    mod_vars <- strsplit(mod_var,":")[[1]]
                     #iterate over levels of modified variable
-                    for (p in 1:length(raw_levels[[attr_name]])) {
-                        #raw level name
-                        level_name <- raw_levels[[attr_name]][p]
+                    for (p in 1:length(raw_levels[[mod_var]])) {          
+                        #raw level name is original coefficient name
+                        mod_coef <- raw_levels[[mod_var]][p]
                         #split it up
-                        levels <- strsplit(level_name,":")[[1]]
-                        #get original name of modified var and modify data dummy
-                        orig_mods <- c()
-                        lev_list <- c()
-                        for (lev in 1:length(levels)) {
-                            orig_mods[lev] <- paste(c(variates[lev], levels[lev]), collapse="")
-                            data.dummy[[variates[lev]]] <- levels[lev]
-                            lev_list <- c(lev_list, amce_obj$user.levels[[levels[lev]]])
-                        }
-                        orig_mod <- paste(orig_mods,collapse=":")
+                        mod_coefs <- strsplit(mod_coef,":")[[1]]
+                        #modify data dummy
+                        for (lev in 1:length(mod_coefs)) {
+                            #get level name from coefficient name 
+                            mod_lev <- sub(mod_vars[lev],"",mod_coefs[lev])
+                        }                       
                         #get level name to print
-                        if (!is.null(level.names) && (attr_name %in% names(level.names))) {
-                            print_level_name <- level.names[[attr_name]][p]
-                        } else {
-                            print_level_name <- paste(lev_list,collapse=":") 
-                        }
- 
+                        print_level_name <- level.names[[mod_var]][p] 
                        #get the baseline of modified var and make a blank line
                         if (p == 1) {
                             if (label.baseline) {
                                 print_level_name <- paste("(Baseline = ",print_level_name,")",sep="")
                             }
-                            d_lev <- data.frame(pe=NA, se=NA, upper=NA, lower=NA, var=paste("   ",  print_level_name,sep=""), group=print_attr_name, facet= print_facet_level)        
+                            d_lev <- data.frame(pe=NA, se=NA, upper=NA, lower=NA, var = mod_coef, printvar=paste("   ",  print_level_name,sep=""), group=print_attr_name, facet= print_facet_level)        
                         } else {
-
-                            #figure out original interaction name
-                            orig_inter <- grep(paste(c("(?=.*", orig_mod, ")(?=.*", orig_facet,")"),collapse=""),names(beta.vector),value=T,perl=T)              
-                            #make sure it contains no other unrelated variables
-                            orig_inter <- unlist(sapply(orig_inter,function(x) {
-                                subs <- strsplit(x,":")[[1]]
-                                subs <- subs[!is.element(subs,orig_mods)]
-                                subs <- subs[!grepl(orig_facet,subs)]
-                                if(length(subs) < 1) x
-                            }))
-
-                            ### if NOT respondent varying, straight grab
-                            if (!facet.name %in% amce_obj$respondent.varying) {
-                                #retrieve estimate and SE
-                                val_pe <- beta.vector[orig_inter]
-                                val_se <- se.vector[orig_inter]
+                            #retrieve estimate and SE
+                            val_pe <- estimate.source[1,p-1]
+                            if (!is.na(val_pe)) {
+                                val_se <- estimate.source[2,p-1]
                                 #calculate bounds
                                 upper_bnd <- val_pe + zscr*val_se
                                 lower_bnd <- val_pe - zscr*val_se 
                             } else {
-                                #add in modified var to orig_inter
-                                pred.cols <- c(orig_mod,orig_inter)
-                                #use modified data.dummy to make model matrix, keep old levels
-                                pred.mat <- model.matrix(amce_obj$cond.formula, data.dummy, xlev = xlevs)
-                                ##### do actual calculation for beta and variance
-                                beta.inter <- pred.mat[1,pred.cols] %*% beta.vector[pred.cols]
-                                if (!is.na(beta.inter)) {
-                                    # for SE, first obtain relevant covariance
-                                    all.cov <- c()
-                                    for (a in 1:length(pred.cols)) {
-                                        for (b in 1:length(pred.cols)) {
-                                            all.cov <- c(all.cov, pred.mat[1,pred.cols[a]]*pred.mat[1,pred.cols[b]]*amce_obj$vcov.resp[pred.cols[a], pred.cols[b]])
-                                        }
-                                    }
-                                    var.inter <- sum(all.cov)
-                                    val_pe <- beta.inter
-                                    val_se <- sqrt(var.inter)
-                                    #calculate bounds
-                                    upper_bnd <- val_pe + zscr*val_se
-                                    lower_bnd <- val_pe - zscr*val_se 
-                                } else {
-                                    val_pe <- NA
-                                    val_se <- NA
-                                    upper_bnd <- NA
-                                    lower_bnd <- NA
-                                }
+                                val_se <- upper_bnd <- lower_bnd <- NA
                             }
-                            #make line to add to plot data
-                            d_lev <- data.frame(pe=val_pe, se=val_se, upper=upper_bnd, lower=lower_bnd, var=paste("   ", print_level_name,sep=""), group=print_attr_name, facet=print_facet_level)       
-                        } #end if p = 1
-
+                             #make line to add to plot data
+                            d_lev <- data.frame(pe=val_pe, se=val_se, upper=upper_bnd, lower=lower_bnd, var = mod_coef, printvar=paste("   ", print_level_name,sep=""), group=print_attr_name, facet=print_facet_level)    
+                        }
                         #add level data to plot data
                         d  <- rbind(d, d_lev)
-                      
                     } #end loop over levels of modified var
+
                 } #end loop over all modified vars
             } #end loop over level of facetted variable
         } #end loop over facets
     } else {
         #if there are no facets or plot.display is unconditional, remove that column
-        d <- d[,1:6]
+        d <- d[,-which(colnames(d) == "facet")]
     }
     
 #################    format "d" dataframe
@@ -2202,20 +2066,9 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
     d$group[d$group == "<NA>"] <- NA
     #same with facet
     if(!is.null(facet.names)) d$facet[d$facet == "<NA>"] <- NA
-
-    #in case of duplicate level names
-    realvar <- c()
-    for(i in 1:nrow(d)) {
-        var <-  as.character(d[i,"var"])
-        group <- as.character(d[i,"group"])
-        group <- ifelse(group == "<NA>","",group)
-        realvar <- c(realvar,paste(c(group,var),collapse = ""))
-    }
-    d$realvar <- realvar
     
   # Reverse factor ordering
-    d$realvar <- factor(d$realvar,levels=unique(d$realvar)[length(d$realvar):1])
-    #d$var <- factor(d$var,levels=unique(d$var)[length(d$var):1])
+    d$var <- factor(d$var,levels=unique(d$var)[length(d$var):1])
     #make facet into factor, if it exists
     if (!is.null(facet.names)) {
         d$facet <- factor(d$facet,levels=unique(d$facet))
@@ -2223,8 +2076,8 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
     
 ########## plot output
                                         
-    p = ggplot(d, aes(y=pe, x=realvar, colour=group))
-    p = p + coord_flip(ylim = ylim)  
+    p = ggplot(d, aes(y=pe, x=var, colour=group))
+    p = p + coord_flip(ylim = ylim) 
     p = p + geom_hline(yintercept = 0,size=.5,colour="black",linetype="dotted") 
     p = p + geom_pointrange(aes(ymin=lower,ymax=upper),position=position_dodge(width=dodge.size),size=point.size)
 
@@ -2243,9 +2096,9 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
     } else if (!is.null(breaks) & !is.null(labels)) {
         p = p + scale_y_continuous(name=xlab, breaks=breaks, labels=labels)
     }
-  
-    fix.xlabs <- as.character(d$var)[!duplicated(d$realvar)]
+    fix.xlabs <- as.character(d$printvar)[!duplicated(d$printvar)]
     p = p + scale_x_discrete(name="",labels=fix.xlabs[length(fix.xlabs):1])
+
   # If there's a title,add it
     if (!is.null(main)) {
         if (main != "") {
@@ -2304,7 +2157,25 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
         p = p + plot.theme
         print(p)
     }
-      
+
+    #console message with level to hold resp vars as
+    if (length(covariate.values) > 1) {
+        resp.message <- c("Note:")
+        for (this.var in names(covariate.values)) {
+            resp.message <- paste(c(resp.message," For AMCE and ACIE conditional on ",this.var,", "),collapse="")
+            other.vars <- names(covariate.values)[names(covariate.values) != this.var]
+
+            other.levels <- c()
+            for (var in other.vars) {
+               other.levels <- c(other.levels,paste(c(var," will be held at level \"",names(covariate.values[[var]])[1],"\""),collapse = ""))                
+           }
+            other.levels <- paste(other.levels,collapse = ", and ")
+            resp.message <- c(resp.message,other.levels,".")
+            resp.message <- paste(resp.message,collapse = "")
+        }
+        cat(resp.message,"\n")
+    }
+
 }
 
 #####################
@@ -2510,79 +2381,134 @@ makeDesign <- function(type="file", J=NULL, filename=NULL, attribute.levels = NU
 # read in qualtrics data
 ###########################
 
-read.qualtrics <- function(filename, responses, covariates=NULL, respondentID=NULL){
-  # If nothing in "responses"
 
-  if (is.null(responses)){
-    stop("responses cannot be NULL")
-    return(NULL)
-  }
+read.qualtrics <- function(filename,responses=NULL,covariates = NULL,respondentID = NULL,letter="F",new.format = FALSE,ranks = NULL){
+
+  ###### Load data and detect dimensions of things
   
   # Load CSV Results
   qualtrics_results <- read.csv(filename, stringsAsFactors=F)
+  
+  # Test whether it is of new format and modify the data
+  if (new.format) {
+    new.format.test <- grepl("ImportId",qualtrics_results[2,1])
+    if (new.format==new.format.test) {
+      print("New qualtrics format detected.")
+      qualtrics_results <- qualtrics_results[-2,]
+    } else {
+      stop("You indicate the data is of new qualtrics format, but it seems to be in old format.")
+      return (NULL)
+      }
+  }
+  
+  if (!new.format) {
+    new.format.test <- grepl("ImportId",qualtrics_results[2,1])
+    if (new.format==new.format.test) {
+      print("Old qualtrics format detected.")
+    } else {
+      stop("You indicate the data is of old qualtrics format, but it seems to be in new format.")
+      return (NULL)
+      }
+  }
 
   # Extract variable names/question names
   var_names <- as.character(qualtrics_results[1,])
   q_names <- colnames(qualtrics_results)
-  qualtrics_results <- qualtrics_results[2:nrow(qualtrics_results),]
-  colnames(qualtrics_results) <- var_names
+  # The rest is the raw data
+  qualtrics_data <- qualtrics_results[2:nrow(qualtrics_results),]
+  colnames(qualtrics_data) <- var_names
+  # Make respondent index
+  respondent_index <- 1:nrow(qualtrics_data)
   
-  # Find the attribute names
-  attr_name_cols <- var_names[grep("F-[0-9]+-[0-9]+(?!-)", var_names, perl=TRUE)]
+  # Find the attribute names and number of tasks
+  attr_regexp <-  paste(c("^",letter,"-[0-9]+-[0-9]+(?!-)"),collapse="")
+  attr_name_cols <- grep(attr_regexp, var_names, perl=TRUE)
+  # remove trailing whitespace
+  qualtrics_data[attr_name_cols] <- lapply(qualtrics_data[attr_name_cols], function (x) sub("\\s+$", "", x))
+  # Parse to matrix
+  attr_name_matrix <- matrix(unlist(strsplit(var_names[attr_name_cols],"-")),nrow=3,ncol=length(attr_name_cols))
+  colnames(attr_name_matrix) <- var_names[attr_name_cols]
+  attr_name_matrix <- attr_name_matrix[2:nrow(attr_name_matrix),]
+  attr_name_matrix <- as.data.frame(t(attr_name_matrix))
+  
+  num_tasks <-unique(as.integer(attr_name_matrix[,1]))
+  
+  # Find the level names and number of profiles
+  level_regexp <- paste(c("^",letter,"-[0-9]+-[0-9]+-[0-9]"),collapse="")
+  level_name_cols <- grep(level_regexp, var_names, perl=TRUE)
+  num_profiles <- length(unique(do.call(rbind,strsplit(var_names[level_name_cols],"-"))[,3]))
+  
+  # Convert to matrix
+  level_name_matrix <- matrix(unlist(strsplit(var_names[level_name_cols],"-")),nrow=4,ncol=length(level_name_cols))
+  colnames(level_name_matrix) <- var_names[level_name_cols]
+  level_name_matrix <- level_name_matrix[2:nrow(level_name_matrix),]
+  level_name_matrix <- as.data.frame(t(level_name_matrix))
+  
+  # Unique attributes
+  all_attr <- c()
+  for (attr_vec in attr_name_cols) {
+    all_attr <- c(all_attr,qualtrics_data[,attr_vec])
+  }
+  ## Remove any trailing white spaces in strings
+  all_attr <- gsub(pattern = "\\s+$", replacement = "", all_attr)
+  #no missing values
+  unique_attr <- unique(all_attr)[nchar(unique(all_attr)) != 0]
+  #and no na's
+  unique_attr <- unique_attr[!is.na(unique_attr)]
+  
+  ####### Checks on input
+  
+  # Are there any responses or ranks
+  if (is.null(responses) & is.null(ranks)) {
+    stop("Either responses or ranks must be non-NULL")
+    return(NULL)
+  }
+  
+  # If there are responses, are there the right number?
+  if (!is.null(responses) && length(num_tasks) != length(responses)) {
+    # If number of responses doesn't match num_tasks
+    stop("Error: Number of response columns doesn't equal number of tasks in data")
+    return(NULL)
+  }
+  
+  # If there are ranks, are there the right number?
+  if (!is.null(ranks) && length(num_tasks) != length(ranks)/num_profiles) {
+    # If number of ranks doesn't match num_tasks
+    stop("Error: Number of rank columns doesn't equal number of tasks times number of profiles in data")
+    return(NULL)
+  }
   
   # If no attributes fit the description
-  if (length(attr_name_cols) == 0){
+  if (length(attr_name_cols) == 0) {
     stop("Error: Cannot find any columns designating attributes and levels. Please make sure the input file originated from a Qualtrics survey designed using the Conjoint SDT")
     return(NULL)
   }
   
   # Check whether attribute columns are empty or not
-  for (attr_column in attr_name_cols){
-    if (is.null(unique(qualtrics_results[,attr_column]))){
-      stop(paste("Error, attribute column ", attr_column, " has no attribute names - recommend deleting this column"))
-    }else if (unique(qualtrics_results[,attr_column])[1] == "" & length(unique(qualtrics_results[,attr_column])) == 1){
-      stop(paste("Error, attribute column ", attr_column, " has no attribute names - recommend deleting this column"))
+  for (attr_column in attr_name_cols) { 
+    if (is.null(unique(qualtrics_data[,attr_column]))) {
+      stop(paste("Error, attribute column ", var_names[attr_column], " has no attribute names - recommend deleting this column"))
+    } else if (unique(qualtrics_data[,attr_column])[1] == "" & length(unique(qualtrics_data[,attr_column])) == 1) {
+      stop(paste("Error, attribute column ", var_names[attr_column], " has no attribute names - recommend deleting this column"))
     }
   }
   
-  # Parse to matrix
-  attr_name_matrix <- matrix(unlist(strsplit(attr_name_cols,"-")),nrow=3,ncol=length(attr_name_cols))
-  colnames(attr_name_matrix) <- attr_name_cols
-  attr_name_matrix <- attr_name_matrix[2:nrow(attr_name_matrix),]
-  attr_name_matrix <- as.data.frame(t(attr_name_matrix))
-
-  num_tasks <-unique(as.integer(attr_name_matrix[,1]))
-  
-  # If number of responses doesn't match num_tasks
-  if (length(num_tasks) != length(responses)){
-    cat("Error: Number of response columns doesn't equal number of tasks in data")
-    return(NULL)
-  }
-  
-  # Find the level names
-  level_name_cols <- var_names[grep("F-[0-9]+-[0-9]+-[0-9]", var_names, perl=TRUE)]
-
   # Check whether level columns are empty or not
-  for (lev_column in level_name_cols){
-    if (is.null(unique(qualtrics_results[,lev_column]))){
-      stop(paste("Error, level column ", lev_column, " has no attribute names - recommend deleting this column"))
-    }else if (unique(qualtrics_results[,lev_column])[1] == "" & length(unique(qualtrics_results[,lev_column])) == 1){
-      stop(paste("Error, level column ", lev_column, " has no attribute names - recommend deleting this column"))
+  for (lev_column in level_name_cols) {
+    if (is.null(unique(qualtrics_data[,lev_column]))) {
+      stop(paste("Error, level column ", var_names[lev_column], " has no attribute names - recommend deleting this column"))
+    } else if (unique(qualtrics_data[,lev_column])[1] == "" & length(unique(qualtrics_data[,lev_column])) == 1) {
+      stop(paste("Error, level column ", var_names[lev_column], " has no attribute names - recommend deleting this column"))
     }
   }  
   
-  # Convert to matrix
-  level_name_matrix <- matrix(unlist(strsplit(level_name_cols,"-")),nrow=4,ncol=length(level_name_cols))
-  colnames(level_name_matrix) <- level_name_cols
-  level_name_matrix <- level_name_matrix[2:nrow(level_name_matrix),]
-  level_name_matrix <- as.data.frame(t(level_name_matrix))
 
   # If respondentID is not null
   if (!is.null(respondentID)){
-    respondent_index <- qualtrics_results[,which(q_names %in% respondentID)]
-
+    respondent_index <- qualtrics_data[,which(q_names %in% respondentID)]
+    
   }else{
-    respondent_index <- 1:nrow(qualtrics_results)
+    respondent_index <- 1:nrow(qualtrics_data)
   }
   
   # Get the response rows
@@ -2591,87 +2517,186 @@ read.qualtrics <- function(filename, responses, covariates=NULL, respondentID=NU
   }else{
     response_vars <- responses
   }
-
-  # Initialize output dataframe
-  out_data_dataset <- NULL
   
-  # Parse each row (this is probably really slow...)
-  for (r in 1:nrow(qualtrics_results)){
-    # Get the attributes
-    skipRow = FALSE
-    # If no attributes, skip the row
-    attribute_refs_1 <- rownames(attr_name_matrix[attr_name_matrix[,1] == 1,])
-    attribute_vector_1 <- qualtrics_results[r,attribute_refs_1]
-
-    if (is.na(attribute_vector_1[1])){
-      skipRow = TRUE
-    }else if (attribute_vector_1[1] == ""){
-      skipRow = TRUE
+  # Make Sure no reserved characters are used in attribute names
+  if (sum(sum(grepl("\\[|\\]", unique(all_attr))),
+          sum(grepl("[\\$\\*\\+\\?\\^\\{\\}\\|\\(\\)\\/\\'\"]",unique(all_attr))))>0){
+    stop(paste("Error, attribute level has special characters"))
+  } else {
+    #grepl(paste0("^",unique(all_attr[unique(all_attr)!=""]),"_[0-9]+-[0-9]+$"), )
+    if (sum(grepl("^attribute_[0-9]+$",unique(all_attr)))>0) {
+      stop (paste("Error, attribute_[0-9]+ is reserved for the function."))
     }
-    if (skipRow != TRUE){
-    # Extract a covariate vector
-    if (!is.null(covariates)){
-      covariate_index <- which(q_names %in% covariates)
-      covnames <- q_names[covariate_index]
-      unit_cov <- qualtrics_results[r,covariate_index]
-
-    }else{
-      unit_cov <- c()
-    }
-    # For each question
-    for (k in num_tasks){
-       attribute_refs <- rownames(attr_name_matrix[attr_name_matrix[,1] == k,])
-       
-       attribute_vector <- qualtrics_results[r,attribute_refs]
-       
-       num_profiles <- as.integer(unique(level_name_matrix[,2]))
-
-
-       selec_num <- qualtrics_results[r,response_vars[k]]
-
-       # For each profile
-       for (j in num_profiles){
-         profile_ref <- rownames(level_name_matrix[level_name_matrix[,1] == k&level_name_matrix[,2] == j,])
-         profile_levels <- qualtrics_results[r,profile_ref]
-
-
-         names(profile_levels) <- attribute_vector
-         
-         if (is.na(as.integer(selec_num))){
-           selec <- NA 
-         }else if (as.integer(selec_num) == as.integer(j)){
-           selec <- 1
-         }else{
-           selec <- 0
-         }
-         
-         if (!is.null(covariates)){
-           row_vec <- data.frame(r,respondent_index[r], k, j, profile_levels, selec, unit_cov)
-  
-           header <- as.vector(unlist(c("respondentIndex", "respondent","task","profile",attribute_vector, "selected", covnames)))
-          
-           colnames(row_vec) <- header
-         }else{
-           row_vec <- data.frame(r,respondent_index[r], k, j, profile_levels, selec)
-           
-           header <- as.vector(unlist(c("respondentIndex", "respondent","task","profile",attribute_vector, "selected")))
-           
-           colnames(row_vec) <- header
-         }
-         if (is.null(out_data_dataset)){
-           out_data_dataset <- row_vec
-         }else{
-           out_data_dataset <- rbind(out_data_dataset, row_vec)
-         }
-
-       }
-    }
+    
+    if (sum(grepl("^selected_[0-9]+-[0-9]$",unique(all_attr)))>0) {
+      stop (paste("Error, selected_[0-9]+-[0-9] is reserved for the function."))
     }
   }
-  # Do some post-processing
-  for (m in attribute_vector){
+  
+  # Initialize output dataframe
+  colnames(qualtrics_data)[which(q_names %in% covariates)] <- covariates
+  out_data_set_cols <- c(which(q_names %in% respondentID),
+                         which(q_names %in% covariates),
+                         (attr_name_cols),
+                         (level_name_cols)
+                         )
+  out_data_dataset <- qualtrics_data[,out_data_set_cols]
+  id_var_name <- colnames(out_data_dataset)[which(q_names %in% respondentID)]
+  
+  # Parameters 
+  num_tasks <- unique(as.integer(attr_name_matrix[,1]))
+  num_profiles <- as.integer(unique(level_name_matrix[,2]))
+  num_attr <- unique(as.integer(attr_name_matrix[,2]))
+  
+  # Replace all - with _ in "F-X-Y"
+  attr_regexp <-  paste(c("^",letter,"-[0-9]+-[0-9]$"),collapse="")
+  temp.col.index <- grep(attr_regexp,colnames(out_data_dataset), perl=TRUE)
+  colnames(out_data_dataset)[temp.col.index] <- gsub("-","_",colnames(out_data_dataset)[temp.col.index])
+  
+  # Replace all - with _ in "F-X-Y-Z"
+  level_regexp <- paste(c("^",letter,"-[0-9]+-[0-9]+-[0-9]$"),collapse="")
+  temp.col.index <- grep(level_regexp,colnames(out_data_dataset), perl=TRUE)
+  colnames(out_data_dataset)[temp.col.index] <- gsub("-","_",colnames(out_data_dataset)[temp.col.index])
+  
+  # Clean attribute names
+  for (i in num_attr){
+    temp.cmd <- paste0("out_data_dataset$attribute_",i,"<-","out_data_dataset$'",letter,"_1_",i,"'")
+    eval(parse(text=temp.cmd))
+  }
+  
+  temp_regexp <-  paste(c("^",letter,"_[0-9]+_[0-9]$"),collapse="")
+  temp.col.index <- grep(temp_regexp,colnames(out_data_dataset), perl=TRUE)
+  out_data_dataset <- out_data_dataset[,-temp.col.index]
+  
+  # Test Selected
+  test.selected <- sum(!unique(unlist(qualtrics_data[,response_vars])) %in% c("",num_profiles))==0
+  
+  if (!test.selected){
+    stop(paste0("Responses can only take values among (",paste(num_profiles, collapse = ","),")"))
+    return (NULL)
+  }
+  
+  # Generate Selected
+  if (is.null(ranks)){
+    for (i in num_tasks){
+      temp.cmd <- paste0("temp.selected","<-","qualtrics_data[,",response_vars[i],"]")
+      eval(parse(text=temp.cmd))
+      for (j in num_profiles){
+        temp.cmd <- paste0("out_data_dataset$'selected_",j,"-",i,"'<-","ifelse(temp.selected==j,1,0)")
+        eval(parse(text=temp.cmd))
+        temp.cmd <- paste0("out_data_dataset$'selected_",j,"-",i,"'[temp.selected","=='']","<-","''")
+        eval(parse(text=temp.cmd))
+      }
+    }
+  } else {
+    ranks_col <- which(q_names %in% ranks)
+    for (i in num_tasks){
+      for (j in num_profiles){
+        temp.cmd <- paste0("out_data_dataset$'selected_",j,"-",i,"'<-","qualtrics_data[,",ranks_col[(i-1)*length(num_profiles)+j],"]")
+        eval(parse(text=temp.cmd))
+      }
+    }
+  }
+  
+  
+  # Remove row if attribute name is empty and trim all attribute entries
+  trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+  
+  for (i in num_attr){
+    temp.cmd <- paste0("out_data_dataset","<-subset(out_data_dataset, attribute_",i,"!='')")
+    eval(parse(text=temp.cmd))
+    temp.cmd <- paste0("out_data_dataset$attribute_",i," <- ","trim(out_data_dataset$attribute_",i,")")
+    eval(parse(text=temp.cmd))
+  }
+  
+  # Generate Attributes
+  attribute_var_names <- unique(unlist(out_data_dataset[,grep("attribute_[0-9]+$", colnames(out_data_dataset))]))
+  attribute_var_names_label <- gsub(" ",".", attribute_var_names)
+  
+  for (i in num_tasks){
+    for (j in num_profiles){
+      for (r in length(attribute_var_names)){
+        temp.cmd <- paste0("out_data_dataset$'",attribute_var_names[r],"_",j,"-",i,"'<-''")
+        eval(parse(text=temp.cmd))
+        temp.cmd <- paste0("out_data_dataset$'",attribute_var_names[r],".rowpos_",j,"-",i,"'<-''")
+        eval(parse(text=temp.cmd))
+      }
+    }
+  }
+  
+  for (i in num_tasks){
+    for (j in num_profiles){
+      for (k in num_attr){
+        for (r in attribute_var_names){
+          temp.cmd <- paste0("out_data_dataset$'",r,"_",j,"-",i,"'",
+                             "[out_data_dataset$attribute_",k,"=='",r,
+                             "']<-out_data_dataset$",letter,"_",i,"_",j,"_",k,
+                             "[out_data_dataset$attribute_",k,"=='",r,"']")
+          eval(parse(text=temp.cmd))
+          
+          temp.cmd <- paste0("out_data_dataset$'",r,".rowpos","_",j,"-",i,"'",
+                             "[out_data_dataset$attribute_",k,"=='",r,
+                             "']<-k")
+          eval(parse(text=temp.cmd))
+        }
+      }
+    }
+  }
+  
+  temp_regexp <- paste(c("^",letter,"_[0-9]+_[0-9]+_[0-9]$"),collapse="")
+  temp.col.index <- grep(temp_regexp,colnames(out_data_dataset), perl=TRUE)
+  out_data_dataset <- out_data_dataset[,-temp.col.index]
+  
+  # Delete attribute names
+  regex.temp <- paste0("^attribute","_[0-9]+","$")
+  out_data_dataset <- out_data_dataset[,-grep(regex.temp, colnames(out_data_dataset))]
+  
+  # Reshape the dataset Batch 1 - Round/Task
+  regex.temp <- paste(paste0("^",attribute_var_names,"_[0-9]+-[0-9]+","$"),collapse="|")
+  regex.temp.2 <- paste(paste0("^",attribute_var_names,".rowpos_[0-9]+-[0-9]+","$"),collapse="|")
+
+  varying.temp <- colnames(out_data_dataset)[grep(regex.temp, colnames(out_data_dataset))]
+  varying.temp.2 <- colnames(out_data_dataset)[grep(regex.temp.2, colnames(out_data_dataset))]
+  varying.temp.3 <- colnames(out_data_dataset)[grep("^selected_[0-9]+-[0-9]+$", colnames(out_data_dataset))]
+  
+  varying.temp <- c(varying.temp, varying.temp.2, varying.temp.3)
+  
+  out_data_dataset <- reshape(out_data_dataset,
+          idvar = id_var_name,
+          varying = varying.temp,
+          sep = "-",
+          timevar = "task",
+          times = num_tasks,
+          new.row.names	= 1:(length(num_tasks)*nrow(out_data_dataset)),
+          direction = "long")
+  
+  # Reshape the dataset Batch 2 - Profile
+  regex.temp <- paste(paste0("^",attribute_var_names,"_[0-9]+","$"), collapse="|")
+  regex.temp.2 <- paste(paste0("^",attribute_var_names,".rowpos_[0-9]+","$"), collapse="|")
+  
+  varying.temp <- colnames(out_data_dataset)[grep(regex.temp, colnames(out_data_dataset))]
+  varying.temp.2 <- colnames(out_data_dataset)[grep(regex.temp.2, colnames(out_data_dataset))]
+  varying.temp.3 <- colnames(out_data_dataset)[grep("^selected_[0-9]+$", colnames(out_data_dataset))]
+  varying.temp <- c(varying.temp, varying.temp.2, varying.temp.3)
+  
+  out_data_dataset <- reshape(out_data_dataset,
+                              idvar = id_var_name,
+                              varying = varying.temp,
+                              sep = "_",
+                              timevar = "profile",
+                              times = num_profiles,
+                              new.row.names	= 1:(length(num_profiles)*nrow(out_data_dataset)),
+                              direction = "long")
+  
+  ## Post-processiong
+  colnames(out_data_dataset)<- gsub(" ",".",colnames(out_data_dataset))
+  
+  for (m in attribute_var_names_label){
     out_data_dataset[[m]] <- as.factor(out_data_dataset[[m]])
   }
+  
+  colnames(out_data_dataset)[which(colnames(out_data_dataset)==id_var_name)] <- "respondent"
+  out_data_dataset$respondentIndex <- as.factor(out_data_dataset$respondent)
   out_data_dataset$respondentIndex <- as.integer(out_data_dataset$respondentIndex)
   out_data_dataset$selected <- as.integer(out_data_dataset$selected)
   out_data_dataset$task <- as.integer(out_data_dataset$task)
@@ -2680,7 +2705,3 @@ read.qualtrics <- function(filename, responses, covariates=NULL, respondentID=NU
   # Return dataset
   return(out_data_dataset)
 }
-
-
-
-

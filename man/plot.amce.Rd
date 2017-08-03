@@ -12,7 +12,7 @@ Plot AMCE Estimates
                     colors = NULL, xlim = NULL, breaks = NULL,
                     labels = NULL, attribute.names = NULL, level.names = NULL,
                     label.baseline = TRUE, text.size = 11, text.color = "black",
-                    point.size = 0.5, dodge.size = 0.9, plot.theme = NULL, 
+                    point.size = 0.5, dodge.size = 0.9, plot.theme = NULL,
                     plot.display = "all",
 		    facet.names = NULL, facet.levels = NULL, ...)
 }
@@ -68,9 +68,10 @@ Plot AMCE Estimates
   }
   \item{plot.display}{
   Character string, one of "all", "unconditional", or "interaction". Option "all" will display both unconditional and interaction estimates. The "unconditional" option will display only 1 plot for unconditional estimates (both AMCE and ACIE) ignoring any facets provided to "facet.names" or respondent-varying characteristics. Option "interaction" will drop the unconditional plot and instead display only (unconditional) ACIE's or estimates conditional on respondent-varying characteristics as specified in the user-supplied option "facet.names". Defaults to "all".}
+  
   \item{facet.names }{
-  To facet plots (i.e., make separate plots for each value of a variable) give "facet.names" a vector of character strings containing the names of the variable(s) (either profile attribute or respondent-varying) to facet by. Unless given specific levels in "facet.levels", the plotted levels will consist of all levels of a factor variable or the quantiles of a continuous variable. Multiple facet variables cannot currently be varied at the same time within the same plot. Instead conditional effects will be calculated for one facet at a time while others are held at 0 (for continuous variables) or baseline (for factors).
-}
+  To facet plots (i.e., make separate plots for each value of a variable) give "facet.names" a vector of character strings containing the names of the variable(s) (either profile attribute or respondent-varying) to facet by. Unless given specific levels in "facet.levels", the plotted levels will consist of all levels of a factor variable or the quantiles of a continuous variable. Multiple facet variables cannot currently be varied at the same time within the same plot. Instead conditional effects will be calculated for one facet at a time while others are held at their first value in facet.levels, by default the bottom quantile for continuous variables and the baseline for factors.}
+  
   \item{facet.levels }{
   To manually set facet levels, provide a list to "facet.levels". Names of list entries should correspond with variable names. The content of each entry should be a vector giving the desired levels, whether factors or continuous. To change the displayed names of the levels, assign names to each vector entry. 
 }
