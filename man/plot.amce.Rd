@@ -14,7 +14,8 @@ Plot AMCE Estimates
                     label.baseline = TRUE, text.size = 11, text.color = "black",
                     point.size = 0.5, dodge.size = 0.9, plot.theme = NULL,
                     plot.display = "all",
-		    facet.names = NULL, facet.levels = NULL, ...)
+					facet.names = NULL, facet.levels = NULL, 
+					group.order = NULL, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -75,6 +76,11 @@ Plot AMCE Estimates
   \item{facet.levels }{
   To manually set facet levels, provide a list to "facet.levels". Names of list entries should correspond with variable names. The content of each entry should be a vector giving the desired levels, whether factors or continuous. To change the displayed names of the levels, assign names to each vector entry. 
 }
+
+  \item{group.order }{
+  To manually set the order of the attributes, provide a vector to "group.order". Names of the vector entries should correspond with name of the attribute. 
+}
+
   \item{\dots }{
   Other graphical parameters passed to \code{ggplot}.
 }
@@ -106,6 +112,14 @@ results <- amce(Chosen_Immigrant ~  Gender + Education + `Language Skills` +
 # Plot results
 plot(results, xlab="Change in Pr(Immigrant Preferred for Admission to U.S.)",
     ylim=c(-.3,.3), breaks=c(-.2, 0, .2), labels=c("-.2","0",".2"), text.size=13)
+	
+# Plot results with user-specified order of attributes
+plot(results, xlab="Change in Pr(Immigrant Preferred for Admission to U.S.)",
+     ylim=c(-.3,.3), breaks=c(-.2, 0, .2), labels=c("-.2","0",".2"), text.size=13,
+     group.order=c("Gender","Education","Job",
+                     "Language Skills","Job Experience",
+                     "Job Plans","Reason for Application",
+                     "Prior Entry","Country of Origin"))
 
 \dontrun{
 # Run AMCE estimator with an interaction with a respondent-varying characteristic
@@ -118,6 +132,9 @@ interaction_results <- amce(Chosen_Immigrant ~ Gender + Education
 # Plot results with additional plots for quantiles of the respondent-varying characteristic
 plot(interaction_results)
 
+# Plot results with user-specified order of attributes
+plot(interaction_results, group.order=c("Gender","Education","Job"))
+
 # Do not show output for variables that do not vary with facetted levels
 plot(interaction_results,plot.display="unconditional")
 
@@ -128,6 +145,7 @@ interaction_results <- amce(Chosen_Immigrant ~ Gender + Education + Job
 
 # Plot results with different plots for all levels of ACIE
 plot(interaction_results,facet.names = "Education")
+
 
 # Plot results with different plots for only two levels of one interacted variable
 facet.levels1 <- list()

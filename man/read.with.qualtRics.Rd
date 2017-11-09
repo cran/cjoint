@@ -1,20 +1,20 @@
-\name{read.qualtrics}
-\alias{read.qualtrics}
+\name{read.with.qualtRics}
+\alias{read.with.qualtRics}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Read Data from a Conjoint Qualtrics Experiment
+	Read Data from a Conjoint Qualtrics Experiment
 }
 \description{
-Converts the raw .CSV data file downloaded from an online conjoint experiment run using the Qualtrics survey software into a data frame usable by the \code{\link{amce}} routine. Each row of the Qualtrics .CSV file is a single survey respondent. The rows of the resulting dataframe correspond to individual profile choices. Currently, the function supports various types of outcomes in a conjoint experiment, with details explained below.
+	Converts the raw dataframe downloaded with R Package \code{"qualtRics"} from an online conjoint experiment into a data frame usable by the \code{\link{amce}} routine. Each row of the raw dataframe is a single survey respondent. The rows of the resulting dataframe correspond to individual profile choices. Currently, the function supports various types of outcomes in a conjoint experiment, with details explained below.
 }
 \usage{
-read.qualtrics(filename, responses = NULL, covariates = NULL,
+read.with.qualtRics(filename, responses = NULL, covariates = NULL,
 	respondentID = NULL, letter = "F",  new.format=FALSE, ranks = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{filename}{
-  A .CSV file containing responses exported from a Qualtrics survey experiment. The first row contains question and variable identifiers (e.g. V1, Q1). The second row contains variable names and question texts. Subsequent rows contain the answers of each respondent. This .CSV file can be exported through the "Download Data" panel in the Qualtrics web interface. Note that answers should be shown as "coded values" and not as choice text.
+  A dataframe containing responses download from a Qualtrics survey experiment with R package \code{"qualtRics"}. Each row contains the answers of each respondent. Note that answers should be shown as "coded values" and not as choice text.
 }
   \item{responses}{
   A character or integer vector with the identifiers of the CSV columns that contain the conjoint responses. The first element corresponds to the identifier of the first question, the second element corresponds to the second question and so on. The length of this vector must be equal to the number of conjoint tasks answered by each respondent. Identifiers are typically in the form "Q#" - e.g. \code{c("Q1", "Q3", "Q5")} would represent a three question survey where the conjoint questions are Q1, Q3 and Q5. If specified as an integer vector, the elements are the column numbers corresponding to each question response.
@@ -39,7 +39,7 @@ read.qualtrics(filename, responses = NULL, covariates = NULL,
 This function currently only works with experiments that generate profiles using .PHP scripts created by the Conjoint Survey Design Tool. It also is only able to handle standard conjoint designs (binary outcome variable/forced choice).\cr
 (\url{http://scholar.harvard.edu/astrezhnev/conjoint-survey-design-tool}). \cr
 
-For each respondent in the .CSV file, attribute and level names are stored using the following naming convention:\cr
+For each respondent in the dataframe, attribute and level names are stored using the following naming convention:\cr
 \bold{Level Name}: F-[task number]-[profile number]-[attribute number]\cr
 \bold{Attribute Name}: F-[task number]-[attribute number]\cr
 \bold{Example}: F-1-3-2 denotes the level corresponding to Task 1, Profile 3, Attribute 2\cr
@@ -77,9 +77,8 @@ Strezhnev, A., Hainmueller, J., Hopkins, D., and Yamamoto, T. (2014) Conjoint Su
 \examples{
 \dontrun{
 # An example file with 5 conjoint tasks per respondent and a single covariate
-# You can demonstrate this function's output using the CandidateConjointQualtrics.csv 
-# demonstration file in the 'inst' subdirectory
-conjoint_data <- read.qualtrics("CandidateConjointQualtrics.csv", 
+# Suppose "CandidateConjointQualtrics" is the dataframe exported by R Package qualtRics
+conjoint_data <- read.with.qualtRics(CandidateConjointQualtrics, 
 responses=c("Q2.3", "Q2.7", "Q2.10", "Q2.13", "Q2.16"), 
 covariates=c("Q6.6"), respondentID="V1")
 }
