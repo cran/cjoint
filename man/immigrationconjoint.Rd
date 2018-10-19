@@ -9,7 +9,7 @@ A dataset containing the results of a conjoint survey of a representative sample
 }
 \usage{data("immigrationconjoint")}
 \format{
-  A data frame with 13960 observations on the following 16 variables.
+  A data frame with 13,960 observations on the following 16 variables.
   \describe{
     \item{\code{CaseID}}{a numeric vector indicating the respondent to which the particular profile corresponds}
     \item{\code{contest_no}}{a numeric vector indicating the number of the task to which the profile corresponds}
@@ -35,6 +35,7 @@ Hainmueller, J., Hopkins, D., and Yamamoto T. (2014) Causal Inference in Conjoin
 }
 
 \examples{
+\dontrun{
 data("immigrationconjoint")
 data("immigrationdesign")
 
@@ -43,5 +44,6 @@ results <- amce(Chosen_Immigrant ~  Gender + Education + `Language Skills` +
                 `Country of Origin` + Job + `Job Experience` + `Job Plans` + 
                 `Reason for Application` + `Prior Entry`, data=immigrationconjoint, 
                 cluster=TRUE, respondent.id="CaseID", design=immigrationdesign)
+}
 }
 \keyword{datasets}

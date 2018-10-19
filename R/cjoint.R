@@ -1215,7 +1215,7 @@ summary.amce <- function(object, covariate.values=NULL, ...) {
         lev_list <- c()
         print_names <- c()
         for (var in variates) {
-            lev_list <- c(lev_list, amce_obj$user.levels[[amce_obj$baselines[[var]]]])
+			lev_list <- c(lev_list, amce_obj$user.levels[[clean.names(paste0(var,amce_obj$baselines[[var]]))]])
             print_names <- c(print_names,amce_obj$user.names[[var]])
         }
         print_level <- paste(lev_list,sep="",collapse=":")
@@ -1664,7 +1664,7 @@ print.summary.amce <- function(x, digits=5, ...) {
 # with a facet given (respondent or otherwise), similarly can choose
 #' @method plot amce
 #' @export 
-plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xlim=NULL, breaks=NULL, labels=NULL, attribute.names = NULL, level.names = NULL, label.baseline = TRUE, text.size=11, text.color = "black", point.size = .5, dodge.size=0.9, plot.theme = NULL, plot.display = "all", facet.names = NULL, facet.levels = NULL, group.order = NULL,...) {
+plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xlim=NULL, breaks=NULL, labels=NULL, attribute.names = NULL, level.names = NULL, label.baseline = TRUE, text.size=11, text.color = "black", point.size = .5, dodge.size=0.9, plot.theme = NULL, plot.display = "all", facet.names = NULL, facet.levels = NULL, group.order = NULL,font.family = NULL,...) {
   
   # You need ggplot2
   amce_obj <- x
@@ -2161,33 +2161,33 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
   # if no theme specified, use default
   if (is.null(plot.theme)){
     
-    theme_bw1 <- function(base_size = text.size, base_family = "") {
-      theme_grey(base_size = base_size, base_family = base_family) %+replace%
-        theme(axis.text.x = element_text(size = base_size*.9, colour = text.color,  hjust = .5 , vjust=1),axis.text.y = element_text(size = base_size, colour = text.color, hjust = 0 , vjust=.5 ), axis.ticks = element_line(colour = "grey50"),axis.title.y =  element_text(size = base_size,angle=90,vjust=.01,hjust=.1),plot.title = element_text(face = "bold"),legend.position = "none")
-    }
-    
-    p = p + theme_bw1()
-    print(p)
+      theme_bw1 <- function(base_size = text.size, base_family = "") {
+          theme_grey(base_size = base_size, base_family = base_family) %+replace%
+          theme(axis.text.x = element_text(size = base_size*.9, colour = text.color,  hjust = .5 , vjust=1),axis.text.y = element_text(size = base_size, colour = text.color, hjust = 0 , vjust=.5,family=font.family), axis.ticks = element_line(colour = "grey50"),axis.title.y = element_text(size = base_size,angle=90,vjust=.01,hjust=.1,family=font.family),plot.title = element_text(face = "bold",family=font.family),legend.position = "none")
+      }
+      
+      p = p + theme_bw1()
+      print(p)
     
   } else if (is.null(class(plot.theme)))  {
     
     cat("Error: 'plot.theme' is not a valid ggplot theme object. Using default theme\n")
-    theme_bw1 <- function(base_size = text.size, base_family = "") {
-      theme_grey(base_size = base_size, base_family = base_family) %+replace%
-        theme(axis.text.x = element_text(size = base_size*.9, colour = text.color,  hjust = .5 , vjust=1),axis.text.y = element_text(size = base_size, colour = text.color, hjust = 0 , vjust=.5 ), axis.ticks = element_line(colour = "grey50"),axis.title.y =  element_text(size = base_size,angle=90,vjust=.01,hjust=.1),plot.title = element_text(face = "bold"),legend.position = "none")
-    }
-    
+      theme_bw1 <- function(base_size = text.size, base_family = "") {
+          theme_grey(base_size = base_size, base_family = base_family) %+replace%
+          theme(axis.text.x = element_text(size = base_size*.9, colour = text.color,  hjust = .5 , vjust=1),axis.text.y = element_text(size = base_size, colour = text.color, hjust = 0 , vjust=.5,family=font.family), axis.ticks = element_line(colour = "grey50"),axis.title.y = element_text(size = base_size,angle=90,vjust=.01,hjust=.1,family=font.family),plot.title = element_text(face = "bold",family=font.family),legend.position = "none")
+      }
+      
     p = p + theme_bw1()
     print(p)
     
   } else if (class(plot.theme)[1] != "theme") {
     
     cat("Error: 'plot.theme' is not a valid ggplot theme object. Using default theme\n")
-    theme_bw1 <- function(base_size = text.size, base_family = "") {
-      theme_grey(base_size = base_size, base_family = base_family) %+replace%
-        theme(axis.text.x = element_text(size = base_size*.9, colour = text.color,  hjust = .5 , vjust=1),axis.text.y = element_text(size = base_size, colour = text.color, hjust = 0 , vjust=.5 ), axis.ticks = element_line(colour = "grey50"),axis.title.y =  element_text(size = base_size,angle=90,vjust=.01,hjust=.1),plot.title = element_text(face = "bold"),legend.position = "none")
-    }
-    
+      theme_bw1 <- function(base_size = text.size, base_family = "") {
+          theme_grey(base_size = base_size, base_family = base_family) %+replace%
+          theme(axis.text.x = element_text(size = base_size*.9, colour = text.color,  hjust = .5 , vjust=1),axis.text.y = element_text(size = base_size, colour = text.color, hjust = 0 , vjust=.5,family=font.family), axis.ticks = element_line(colour = "grey50"),axis.title.y = element_text(size = base_size,angle=90,vjust=.01,hjust=.1,family=font.family),plot.title = element_text(face = "bold",family=font.family),legend.position = "none")
+      }
+      
     p = p + theme_bw1()
     print(p)
     
@@ -2419,6 +2419,16 @@ makeDesign <- function(type="file", J=NULL, filename=NULL, attribute.levels = NU
 # read in qualtrics data
 ###########################
 
+re.escape <- function(strings){
+  vals <- c("\\\\", "\\[", "\\]", "\\(", "\\)", 
+            "\\{", "\\}", "\\^", "\\$","\\*", 
+            "\\+", "\\?", "\\.", "\\|")
+  replace.vals <- paste0("\\\\", vals)
+  for(i in seq_along(vals)){
+    strings <- gsub(vals[i], replace.vals[i], strings)
+  }
+  strings
+}
 
 read.qualtrics <- function(filename,responses=NULL,covariates = NULL,respondentID = NULL,letter="F",new.format = FALSE,ranks = NULL){
   
@@ -2557,9 +2567,8 @@ read.qualtrics <- function(filename,responses=NULL,covariates = NULL,respondentI
   }
   
   # Make Sure no reserved characters are used in attribute names
-  if (sum(sum(grepl("\\[|\\]", unique(all_attr))),
-          sum(grepl("[\\$\\*\\+\\?\\^\\{\\}\\|\\(\\)\\/\\'\"]",unique(all_attr))))>0){
-    stop(paste("Error, attribute level has special characters"))
+  if (sum(grepl("[\\'\"]",unique(all_attr)))>0){
+    stop(paste("Error, attribute name has special characters. Some special characters are reserved for this function (if cjoint>v2.0.6) for the purpose of efficiency. If you still want to display special character in your plot, use the argument attribute.names in the plot function. See manual for more details."))
   } else {
     #grepl(paste0("^",unique(all_attr[unique(all_attr)!=""]),"_[0-9]+-[0-9]+$"), )
     if (sum(grepl("^attribute_[0-9]+$",unique(all_attr)))>0) {
@@ -2579,7 +2588,14 @@ read.qualtrics <- function(filename,responses=NULL,covariates = NULL,respondentI
                          (level_name_cols)
   )
   out_data_dataset <- qualtrics_data[,out_data_set_cols]
-  id_var_name <- colnames(out_data_dataset)[which(q_names %in% respondentID)]
+  
+  # Take care of null respondentID case
+  if (!is.null(respondentID)){
+    id_var_name <- colnames(out_data_dataset)[which(q_names %in% respondentID)]
+  } else {
+    out_data_dataset <- cbind(out_data_dataset, respondent_index)
+    id_var_name <- "respondent_index"
+  }
   
   # Parameters 
   num_tasks <- unique(as.integer(attr_name_matrix[,1]))
@@ -2598,7 +2614,7 @@ read.qualtrics <- function(filename,responses=NULL,covariates = NULL,respondentI
   
   # Clean attribute names
   for (i in num_attr){
-    temp.cmd <- paste0("out_data_dataset$attribute_",i,"<-","out_data_dataset$'",letter,"_1_",i,"'")
+    temp.cmd <- paste0("out_data_dataset['attribute_",i,"']<-","out_data_dataset['",letter,"_1_",i,"']")
     eval(parse(text=temp.cmd))
   }
   
@@ -2636,14 +2652,13 @@ read.qualtrics <- function(filename,responses=NULL,covariates = NULL,respondentI
     }
   }
   
-  
   # Remove row if attribute name is empty and trim all attribute entries
   trim <- function (x) gsub("^\\s+|\\s+$", "", x)
   
   for (i in num_attr){
     temp.cmd <- paste0("out_data_dataset","<-subset(out_data_dataset, attribute_",i,"!='')")
     eval(parse(text=temp.cmd))
-    temp.cmd <- paste0("out_data_dataset$attribute_",i," <- ","trim(out_data_dataset$attribute_",i,")")
+    temp.cmd <- paste0("out_data_dataset['attribute_",i,"'] <- ","trim(out_data_dataset$'attribute_",i,"')")
     eval(parse(text=temp.cmd))
   }
   
@@ -2653,10 +2668,10 @@ read.qualtrics <- function(filename,responses=NULL,covariates = NULL,respondentI
   
   for (i in num_tasks){
     for (j in num_profiles){
-      for (r in length(attribute_var_names)){
-        temp.cmd <- paste0("out_data_dataset$'",attribute_var_names[r],"_",j,"-",i,"'<-''")
+      for (r in 1:length(attribute_var_names)){
+        temp.cmd <- paste0("out_data_dataset['",attribute_var_names[r],"_",j,"-",i,"']<-''")
         eval(parse(text=temp.cmd))
-        temp.cmd <- paste0("out_data_dataset$'",attribute_var_names[r],".rowpos_",j,"-",i,"'<-''")
+        temp.cmd <- paste0("out_data_dataset['",attribute_var_names[r],".rowpos_",j,"-",i,"']<-''")
         eval(parse(text=temp.cmd))
       }
     }
@@ -2666,14 +2681,14 @@ read.qualtrics <- function(filename,responses=NULL,covariates = NULL,respondentI
     for (j in num_profiles){
       for (k in num_attr){
         for (r in attribute_var_names){
-          temp.cmd <- paste0("out_data_dataset$'",r,"_",j,"-",i,"'",
-                             "[out_data_dataset$attribute_",k,"=='",r,
-                             "']<-out_data_dataset$",letter,"_",i,"_",j,"_",k,
-                             "[out_data_dataset$attribute_",k,"=='",r,"']")
+          temp.cmd <- paste0("out_data_dataset['",r,"_",j,"-",i,"']",
+                             "[out_data_dataset['attribute_",k,"']=='",r,
+                             "']<-out_data_dataset['",letter,"_",i,"_",j,"_",k,
+                             "'][out_data_dataset['attribute_",k,"']=='",r,"']")
           eval(parse(text=temp.cmd))
           
-          temp.cmd <- paste0("out_data_dataset$'",r,".rowpos","_",j,"-",i,"'",
-                             "[out_data_dataset$attribute_",k,"=='",r,
+          temp.cmd <- paste0("out_data_dataset['",r,".rowpos","_",j,"-",i,"'",
+                             "][out_data_dataset['attribute_",k,"']=='",r,
                              "']<-k")
           eval(parse(text=temp.cmd))
         }
@@ -2690,8 +2705,8 @@ read.qualtrics <- function(filename,responses=NULL,covariates = NULL,respondentI
   out_data_dataset <- out_data_dataset[,-grep(regex.temp, colnames(out_data_dataset))]
   
   # Reshape the dataset Batch 1 - Round/Task
-  regex.temp <- paste(paste0("^",attribute_var_names,"_[0-9]+-[0-9]+","$"),collapse="|")
-  regex.temp.2 <- paste(paste0("^",attribute_var_names,".rowpos_[0-9]+-[0-9]+","$"),collapse="|")
+  regex.temp <- paste(paste0("^",re.escape(attribute_var_names),"_[0-9]+-[0-9]+","$"),collapse="|")
+  regex.temp.2 <- paste(paste0("^",re.escape(attribute_var_names),".rowpos_[0-9]+-[0-9]+","$"),collapse="|")
   
   varying.temp <- colnames(out_data_dataset)[grep(regex.temp, colnames(out_data_dataset))]
   varying.temp.2 <- colnames(out_data_dataset)[grep(regex.temp.2, colnames(out_data_dataset))]
@@ -2717,8 +2732,8 @@ read.qualtrics <- function(filename,responses=NULL,covariates = NULL,respondentI
                               direction = "long")
   
   # Reshape the dataset Batch 2 - Profile
-  regex.temp <- paste(paste0("^",attribute_var_names,"_[0-9]+","$"), collapse="|")
-  regex.temp.2 <- paste(paste0("^",attribute_var_names,".rowpos_[0-9]+","$"), collapse="|")
+  regex.temp <- paste(paste0("^",re.escape(attribute_var_names),"_[0-9]+","$"), collapse="|")
+  regex.temp.2 <- paste(paste0("^",re.escape(attribute_var_names),".rowpos_[0-9]+","$"), collapse="|")
   
   varying.temp <- colnames(out_data_dataset)[grep(regex.temp, colnames(out_data_dataset))]
   varying.temp.2 <- colnames(out_data_dataset)[grep(regex.temp.2, colnames(out_data_dataset))]
@@ -2779,11 +2794,11 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
   colnames(qualtrics_results)[replace.col] <-
     gsub("[.]","-",colnames(qualtrics_results)[replace.col])
   
-  # Extract variable names/question names
-  var_names <- colnames(qualtrics_results)
+# Extract variable names/question names
+  var_names <- as.character(qualtrics_results[1,])
   q_names <- colnames(qualtrics_results)
   # The rest is the raw data
-  qualtrics_data <- qualtrics_results
+  qualtrics_data <- qualtrics_results[2:nrow(qualtrics_results),]
   colnames(qualtrics_data) <- var_names
   # Make respondent index
   respondent_index <- 1:nrow(qualtrics_data)
@@ -2887,9 +2902,8 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
   }
   
   # Make Sure no reserved characters are used in attribute names
-  if (sum(sum(grepl("\\[|\\]", unique(all_attr))),
-          sum(grepl("[\\$\\*\\+\\?\\^\\{\\}\\|\\(\\)\\/\\'\"]",unique(all_attr))))>0){
-    stop(paste("Error, attribute level has special characters"))
+  if (sum(grepl("[\\'\"]",unique(all_attr)))>0){
+    stop(paste("Error, attribute name has special characters. Some special characters are reserved for this function (if cjoint>v2.0.6) for the purpose of efficiency. If you still want to display special character in your plot, use the argument attribute.names in the plot function. See manual for more details."))
   } else {
     #grepl(paste0("^",unique(all_attr[unique(all_attr)!=""]),"_[0-9]+-[0-9]+$"), )
     if (sum(grepl("^attribute_[0-9]+$",unique(all_attr)))>0) {
@@ -2909,7 +2923,14 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
                          (level_name_cols)
   )
   out_data_dataset <- qualtrics_data[,out_data_set_cols]
-  id_var_name <- colnames(out_data_dataset)[which(q_names %in% respondentID)]
+  
+  # Take care of null respondentID case
+  if (!is.null(respondentID)){
+    id_var_name <- colnames(out_data_dataset)[which(q_names %in% respondentID)]
+  } else {
+    out_data_dataset <- cbind(out_data_dataset, respondent_index)
+    id_var_name <- "respondent_index"
+  }
   
   # Parameters 
   num_tasks <- unique(as.integer(attr_name_matrix[,1]))
@@ -2928,7 +2949,7 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
   
   # Clean attribute names
   for (i in num_attr){
-    temp.cmd <- paste0("out_data_dataset$attribute_",i,"<-","out_data_dataset$'",letter,"_1_",i,"'")
+    temp.cmd <- paste0("out_data_dataset['attribute_",i,"']<-","out_data_dataset['",letter,"_1_",i,"']")
     eval(parse(text=temp.cmd))
   }
   
@@ -2966,14 +2987,13 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
     }
   }
   
-  
   # Remove row if attribute name is empty and trim all attribute entries
   trim <- function (x) gsub("^\\s+|\\s+$", "", x)
   
   for (i in num_attr){
     temp.cmd <- paste0("out_data_dataset","<-subset(out_data_dataset, attribute_",i,"!='')")
     eval(parse(text=temp.cmd))
-    temp.cmd <- paste0("out_data_dataset$attribute_",i," <- ","trim(out_data_dataset$attribute_",i,")")
+    temp.cmd <- paste0("out_data_dataset['attribute_",i,"'] <- ","trim(out_data_dataset$'attribute_",i,"')")
     eval(parse(text=temp.cmd))
   }
   
@@ -2983,10 +3003,10 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
   
   for (i in num_tasks){
     for (j in num_profiles){
-      for (r in length(attribute_var_names)){
-        temp.cmd <- paste0("out_data_dataset$'",attribute_var_names[r],"_",j,"-",i,"'<-''")
+      for (r in 1:length(attribute_var_names)){
+        temp.cmd <- paste0("out_data_dataset['",attribute_var_names[r],"_",j,"-",i,"']<-''")
         eval(parse(text=temp.cmd))
-        temp.cmd <- paste0("out_data_dataset$'",attribute_var_names[r],".rowpos_",j,"-",i,"'<-''")
+        temp.cmd <- paste0("out_data_dataset['",attribute_var_names[r],".rowpos_",j,"-",i,"']<-''")
         eval(parse(text=temp.cmd))
       }
     }
@@ -2996,14 +3016,14 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
     for (j in num_profiles){
       for (k in num_attr){
         for (r in attribute_var_names){
-          temp.cmd <- paste0("out_data_dataset$'",r,"_",j,"-",i,"'",
-                             "[out_data_dataset$attribute_",k,"=='",r,
-                             "']<-out_data_dataset$",letter,"_",i,"_",j,"_",k,
-                             "[out_data_dataset$attribute_",k,"=='",r,"']")
+          temp.cmd <- paste0("out_data_dataset['",r,"_",j,"-",i,"']",
+                             "[out_data_dataset['attribute_",k,"']=='",r,
+                             "']<-out_data_dataset['",letter,"_",i,"_",j,"_",k,
+                             "'][out_data_dataset['attribute_",k,"']=='",r,"']")
           eval(parse(text=temp.cmd))
           
-          temp.cmd <- paste0("out_data_dataset$'",r,".rowpos","_",j,"-",i,"'",
-                             "[out_data_dataset$attribute_",k,"=='",r,
+          temp.cmd <- paste0("out_data_dataset['",r,".rowpos","_",j,"-",i,"'",
+                             "][out_data_dataset['attribute_",k,"']=='",r,
                              "']<-k")
           eval(parse(text=temp.cmd))
         }
@@ -3020,8 +3040,8 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
   out_data_dataset <- out_data_dataset[,-grep(regex.temp, colnames(out_data_dataset))]
   
   # Reshape the dataset Batch 1 - Round/Task
-  regex.temp <- paste(paste0("^",attribute_var_names,"_[0-9]+-[0-9]+","$"),collapse="|")
-  regex.temp.2 <- paste(paste0("^",attribute_var_names,".rowpos_[0-9]+-[0-9]+","$"),collapse="|")
+  regex.temp <- paste(paste0("^",re.escape(attribute_var_names),"_[0-9]+-[0-9]+","$"),collapse="|")
+  regex.temp.2 <- paste(paste0("^",re.escape(attribute_var_names),".rowpos_[0-9]+-[0-9]+","$"),collapse="|")
   
   varying.temp <- colnames(out_data_dataset)[grep(regex.temp, colnames(out_data_dataset))]
   varying.temp.2 <- colnames(out_data_dataset)[grep(regex.temp.2, colnames(out_data_dataset))]
@@ -3029,23 +3049,37 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
   
   varying.temp <- c(varying.temp, varying.temp.2, varying.temp.3)
   
+  v.names.temp <- unique(gsub("-[0-9]+$","",varying.temp))
+  v.names.temp <- v.names.temp[order(v.names.temp)]
+  
+  varying.temp <- paste0(rep(v.names.temp, length(num_tasks)),"-",
+                         rep(num_tasks, each=length(v.names.temp)))
+  
+  
   out_data_dataset <- reshape(out_data_dataset,
                               idvar = id_var_name,
                               varying = varying.temp,
                               sep = "-",
                               timevar = "task",
                               times = num_tasks,
+                              v.names = v.names.temp,
                               new.row.names	= 1:(length(num_tasks)*nrow(out_data_dataset)),
                               direction = "long")
   
   # Reshape the dataset Batch 2 - Profile
-  regex.temp <- paste(paste0("^",attribute_var_names,"_[0-9]+","$"), collapse="|")
-  regex.temp.2 <- paste(paste0("^",attribute_var_names,".rowpos_[0-9]+","$"), collapse="|")
+  regex.temp <- paste(paste0("^",re.escape(attribute_var_names),"_[0-9]+","$"), collapse="|")
+  regex.temp.2 <- paste(paste0("^",re.escape(attribute_var_names),".rowpos_[0-9]+","$"), collapse="|")
   
   varying.temp <- colnames(out_data_dataset)[grep(regex.temp, colnames(out_data_dataset))]
   varying.temp.2 <- colnames(out_data_dataset)[grep(regex.temp.2, colnames(out_data_dataset))]
   varying.temp.3 <- colnames(out_data_dataset)[grep("^selected_[0-9]+$", colnames(out_data_dataset))]
   varying.temp <- c(varying.temp, varying.temp.2, varying.temp.3)
+  
+  v.names.temp <- unique(gsub("_[0-9]+$","",varying.temp))
+  v.names.temp <- v.names.temp[order(v.names.temp)]
+  
+  varying.temp <- paste0(rep(v.names.temp, length(num_profiles)),"_",
+                         rep(num_profiles, each=length(v.names.temp)))
   
   out_data_dataset <- reshape(out_data_dataset,
                               idvar = id_var_name,
@@ -3053,6 +3087,7 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
                               sep = "_",
                               timevar = "profile",
                               times = num_profiles,
+                              v.names = v.names.temp,
                               new.row.names	= 1:(length(num_profiles)*nrow(out_data_dataset)),
                               direction = "long")
   
@@ -3069,7 +3104,9 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
   out_data_dataset$selected <- as.integer(out_data_dataset$selected)
   out_data_dataset$task <- as.integer(out_data_dataset$task)
   out_data_dataset$profile <- as.integer(out_data_dataset$profile)
-
+  
   # Return dataset
-  return(out_data_dataset)  
+  return(out_data_dataset)
 }
+
+

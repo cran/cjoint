@@ -18,6 +18,7 @@ Hainmueller, J., Hopkins, D., and Yamamoto T. (2014) Causal Inference in Conjoin
 }
 
 \examples{
+\dontrun{
 # Loads the immigrationconjoint dataset and the immigrationdesign object
 data("immigrationconjoint")
 data("immigrationdesign")
@@ -28,5 +29,6 @@ results <- amce(Chosen_Immigrant ~  Gender + Education + `Language Skills` +
                 `Reason for Application` + `Prior Entry`, data=immigrationconjoint, 
                 cluster=TRUE, respondent.id="CaseID", design=immigrationdesign)
 
+}
 }
 \keyword{datasets}

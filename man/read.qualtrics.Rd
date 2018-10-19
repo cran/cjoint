@@ -45,8 +45,10 @@ For each respondent in the .CSV file, attribute and level names are stored using
 \bold{Example}: F-1-3-2 denotes the level corresponding to Task 1, Profile 3, Attribute 2\cr
 F-3-3 denotes the attribute name corresponding to Task 3, Attribute 3
 
+\bold{Special Characters}: Some special characters have been reserved for this function if (cjoint>v2.0.6) for efficienty purpose. This means some special characters cannot be used in the attribute names in your data. However, if you still want to display special characters in attribute names in your plot, you may want to use the argument \code{attribute.names} in function \code{plot.amce} to customize the display of your attribute names.
+
 \bold{East Asian Language Support:} The read.qualtrics function relies on the read.csv function in R-core. The read.csv function only works well for some of character encoding, but not others, for East Asian languages in some Operation 
-systems. In Windows, .csv files containing East Asian languages such as Chinese or Japanese should be stored in the ANSI encoding rather than UTF-8 for the read.csv function to work.
+systems. In Windows, .csv files containing East Asian languages such as Chinese or Japanese should be stored in the ANSI encoding rather than UTF-8 for the read.csv function to work. Further, if you are reading the csv file in a Windows OS with a different display language as the file you are trying to read in, you will need to reconfigure R into the language of the csv file by \code{Sys.setlocale()}. 
 
 \bold{Different types of responses}: This function supports various types of responses commonly used in conjoint analyses. Here are some illustrations on some typical types. 
 

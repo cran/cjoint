@@ -73,6 +73,7 @@ Hainmueller, J., Hopkins, D., and Yamamoto T. (2014) Causal Inference in Conjoin
 \code{\link{makeDesign}} to create \code{conjointDesign} objects.
 }
 \examples{
+\dontrun{
 # Immigration Choice Conjoint Experiment Data from Hainmueller et. al. (2014).
 data("immigrationconjoint")
 data("immigrationdesign")
@@ -85,7 +86,7 @@ results <- amce(Chosen_Immigrant ~  Gender + Education + `Language Skills` +
 # Print summary
 summary(results)
 
-\dontrun{
+
 # Run AMCE estimator using all attributes in the design with interactions
 interaction_results <- amce(Chosen_Immigrant ~  Gender + Education + `Language Skills` +
                 `Country of Origin` + Job + `Job Experience` + `Job Plans` +

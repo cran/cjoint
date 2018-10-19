@@ -15,7 +15,7 @@ Plot AMCE Estimates
                     point.size = 0.5, dodge.size = 0.9, plot.theme = NULL,
                     plot.display = "all",
 					facet.names = NULL, facet.levels = NULL, 
-					group.order = NULL, ...)
+					group.order = NULL,font.family = NULL, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -84,6 +84,9 @@ Plot AMCE Estimates
   \item{\dots }{
   Other graphical parameters passed to \code{ggplot}.
 }
+  \item{font.family }{
+  Will be passed to the ggplot function as the argument for font.family. If NULL, defaults will be used.
+}
 }
 
 \value{
@@ -99,6 +102,7 @@ Hainmueller, J., Hopkins, D., and Yamamoto T. (2014) Causal Inference in Conjoin
 \code{\link{amce}} for the main estimation routine.
 }
 \examples{
+\dontrun{
 # Immigration Choice Conjoint Experiment Data from Hainmueller et. al. (2014).
 data("immigrationconjoint")
 data("immigrationdesign")
@@ -121,7 +125,7 @@ plot(results, xlab="Change in Pr(Immigrant Preferred for Admission to U.S.)",
                      "Job Plans","Reason for Application",
                      "Prior Entry","Country of Origin"))
 
-\dontrun{
+
 # Run AMCE estimator with an interaction with a respondent-varying characteristic
 interaction_results <- amce(Chosen_Immigrant ~ Gender + Education
 		    + Job + ethnocentrism:Job,

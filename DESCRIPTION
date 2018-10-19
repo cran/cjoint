@@ -1,19 +1,20 @@
 Package: cjoint
-Version: 2.0.6
-Date: 2017-11-9
+Version: 2.1.0
+Date: 2018-09-18
 Title: AMCE Estimator for Conjoint Experiments
 Author: Soubhik Barari, Elissa Berwick, Jens Hainmueller, Daniel Hopkins, Sean Liu, Anton Strezhnev, Teppei Yamamoto
-Maintainer: Anton Strezhnev <astrezhnev@fas.harvard.edu>
-Depends: R (>= 2.0.0), sandwich, lmtest, ggplot2, survey, Matrix
-Imports: stats, utils, methods
-Suggests: testthat, qualtRics
+Maintainer: Anton Strezhnev <astrezhn@law.upenn.edu>
+Depends: R (>= 2.10), sandwich, lmtest, ggplot2, survey, Matrix
+Imports: stats, utils, methods, DT, shiny, shinyjs, shinyBS
+Suggests: testthat
 Description: An R implementation of the Average Marginal Component-specific
     Effects (AMCE) estimator presented in Hainmueller, J., Hopkins, D., and Yamamoto
     T. (2014) <DOI:10.1093/pan/mpt024> Causal Inference in Conjoint Analysis: Understanding Multi-Dimensional
     Choices via Stated Preference Experiments. Political Analysis 22(1):1-30.
 License: GPL (>= 2)
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.0
+Encoding: UTF-8
 NeedsCompilation: no
-Packaged: 2017-11-09 20:30:57 UTC; anton
+Packaged: 2018-10-19 03:07:02 UTC; anton
 Repository: CRAN
-Date/Publication: 2017-11-09 20:42:24 UTC
+Date/Publication: 2018-10-19 08:20:02 UTC
