@@ -2926,7 +2926,7 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
   
   # Take care of null respondentID case
   if (!is.null(respondentID)){
-    id_var_name <- colnames(out_data_dataset)[which(q_names %in% respondentID)]
+    id_var_name <- colnames(out_data_dataset)[1]
   } else {
     out_data_dataset <- cbind(out_data_dataset, respondent_index)
     id_var_name <- "respondent_index"
