@@ -50,7 +50,7 @@ Returns an object of class "conjointDesign" containing:
 }
 }
 \references{
-Strezhnev, A., Hainmueller, J., Hopkins, D., and Yamamoto, T. (2014) Conjoint Survey Design Tool. \url{http://scholar.harvard.edu/astrezhnev/conjoint-survey-design-tool}
+Strezhnev, A., Hainmueller, J., Hopkins, D., and Yamamoto, T. (2014) Conjoint Survey Design Tool. \url{https://github.com/astrezhnev/conjointsdt/}
 
 Hainmueller, J., Hopkins, D., and Yamamoto T. (2014) Causal Inference in Conjoint Analysis: Understanding Multi-Dimensional Choices via Stated Preference Experiments. Political Analysis 22(1):1-30
 }

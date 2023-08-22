@@ -37,7 +37,7 @@ read.with.qualtRics(filename, responses = NULL, covariates = NULL,
 }
 \details{
 This function currently only works with experiments that generate profiles using .PHP scripts created by the Conjoint Survey Design Tool. It also is only able to handle standard conjoint designs (binary outcome variable/forced choice).\cr
-(\url{http://scholar.harvard.edu/astrezhnev/conjoint-survey-design-tool}). \cr
+(\url{https://github.com/astrezhnev/conjointsdt/}). \cr
 
 For each respondent in the dataframe, attribute and level names are stored using the following naming convention:\cr
 \bold{Level Name}: F-[task number]-[profile number]-[attribute number]\cr
@@ -72,7 +72,7 @@ systems. In Windows, .csv files containing East Asian languages such as Chinese 
 A dataframe in which each row corresponds to a single profile. The column "selected" denotes whether that profile was selected by the respondent. The columns "respondent" and "task" denote the respondent and task numbers to which the profile was assigned. Respondent-level covariates are appended to each row.
 }
 \references{
-Strezhnev, A., Hainmueller, J., Hopkins, D., and Yamamoto, T. (2014) Conjoint Survey Design Tool. \url{http://scholar.harvard.edu/astrezhnev/conjoint-survey-design-tool}
+Strezhnev, A., Hainmueller, J., Hopkins, D., and Yamamoto, T. (2014) Conjoint Survey Design Tool. \url{https://github.com/astrezhnev/conjointsdt/}
 }
 \examples{
 \dontrun{

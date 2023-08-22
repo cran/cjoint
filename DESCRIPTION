@@ -1,11 +1,11 @@
 Package: cjoint
-Version: 2.1.0
-Date: 2018-09-18
+Version: 2.1.1
+Date: 2023-08-21
 Title: AMCE Estimator for Conjoint Experiments
 Author: Soubhik Barari, Elissa Berwick, Jens Hainmueller, Daniel Hopkins, Sean Liu, Anton Strezhnev, Teppei Yamamoto
-Maintainer: Anton Strezhnev <astrezhn@law.upenn.edu>
+Maintainer: Anton Strezhnev <astrezhnev@uchicago.edu>
 Depends: R (>= 2.10), sandwich, lmtest, ggplot2, survey, Matrix
-Imports: stats, utils, methods, DT, shiny, shinyjs, shinyBS
+Imports: stats, utils, methods, DT, shiny, shinyjs
 Suggests: testthat
 Description: An R implementation of the Average Marginal Component-specific
     Effects (AMCE) estimator presented in Hainmueller, J., Hopkins, D., and Yamamoto
@@ -15,6 +15,6 @@ License: GPL (>= 2)
 RoxygenNote: 6.1.0
 Encoding: UTF-8
 NeedsCompilation: no
-Packaged: 2018-10-19 03:07:02 UTC; anton
+Packaged: 2023-08-21 20:00:11 UTC; anton
 Repository: CRAN
-Date/Publication: 2018-10-19 08:20:02 UTC
+Date/Publication: 2023-08-22 07:50:07 UTC

@@ -1,4 +1,4 @@
-#' @import shiny 
+#' @import shiny
 #' @export view
 
 ## view(amce): R Shiny exploratory visualization tool that ships with `amce`; useed 
@@ -29,11 +29,7 @@ view <- function(object) {
         if (!requireNamespace("shinyjs", quietly=TRUE)) {
             stop("Package \"shinyjs\" needed for `view(amce)` to work. Please install it")
         }
-        
-        if (!requireNamespace("shinyBS", quietly=TRUE)) {
-            stop("Package \"shinyBS\" needed for `view(amce)` to work. Please install it")
-        }
-        
+
         if (!requireNamespace("DT", quietly=TRUE)) {
             stop("Package \"DT\" needed for `view(amce)` to work. Please install it")
         }

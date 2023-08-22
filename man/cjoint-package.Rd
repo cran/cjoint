@@ -12,16 +12,16 @@ This package allows researchers to estimate the causal effects of attributes in 
 \tabular{ll}{
 Package: \tab cjoint\cr
 Type: \tab Package\cr
-Version: \tab 2.0\cr
-Date: \tab 2015-07-22\cr
+Version: \tab 2.1.1\cr
+Date: \tab 2023-08-21\cr
 License: \tab GPL (>= 2)\cr
 }
 
 }
 \author{
-Authors: Anton Strezhnev, Elissa Berwick, Jens Hainmueller, Daniel Hopkins, Teppei Yamamoto
+Authors: Soubhik Barari, Elissa Berwick, Jens Hainmueller, Daniel Hopkins, Sean Liu, Anton Strezhnev, Teppei Yamamoto
 
-Maintainer: Anton Strezhnev <astrezhnev@fas.harvard.edu>
+Maintainer: Anton Strezhnev <astrezhnev@uchicago.edu>
 
 }
 \references{

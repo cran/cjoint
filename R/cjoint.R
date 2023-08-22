@@ -26,7 +26,7 @@
 cluster_se_glm <- function(model, cluster){
     
     #  Drop unused cluster indicators, if cluster var is a factor
-    if (class(cluster) == "factor") {
+    if (inherits(cluster, "factor")) {
         cluster <- droplevels(cluster)
     }
     
@@ -85,7 +85,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
     user_levels <- list()
     for (char in formula_char_user) {
         user_names[[clean.names(char)]] <- char
-        if (class(data[[char]]) == "factor") {
+        if (inherits(data[[char]], "factor")) {
             old_names <- names(user_levels)
             user_levels <- c(user_levels,levels(data[[char]]))
             new_names <- sapply(clean.names(levels(data[[char]])),function(x) paste(clean.names(char),x,sep=""))
@@ -173,7 +173,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
     var_to_check_levels <- unique(c(formula_char_user, respondent_vars, profile_vars, profile_effects, orig_effects))
     
     for (var in var_to_check_levels) {
-        if (class(data[[var]]) == "factor") {
+        if (inherits(data[[var]], "factor")) {
             clean.labels <- clean.names(levels(data[[var]]))
             if (length(unique(clean.labels)) != length(clean.labels)) {
                 stop (paste("Error: levels of variable", var, "are not unique when whitespace and meta-characters are removed. Please rename."))
@@ -193,7 +193,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
 
     # Make sure non-respondent varying are factors
     for (var in profile_vars) {
-        if (class(data[[var]]) != "factor") {
+        if (!inherits(data[[var]], "factor")) {
             data[[var]] <- as.factor(data[[var]])
             warning(paste(c("Warning: ",var," changed to factor"),collapse=""))
         }
@@ -270,7 +270,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
 ##### Sanity Checks re: design matrix
     
     # If design is already conjointDesign object, proceed to relevant sanity checks
-    if (class(design) == "conjointDesign") {
+    if (inherits(design, "conjointDesign")) {
         # Remove whitespaces etc from dimension names of design array 
         names(dimnames(design$J)) <- clean.names(names(dimnames(design$J)))
         dimnames(design$J) <- lapply(dimnames(design$J),function(x) clean.names(x))
@@ -307,7 +307,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
         depend_to_check <- depend_to_check[!depend_to_check %in% var_to_check_levels]
         ## Check that all dependencies have unique levels
         for (var in depend_to_check){
-          if (class(data[[var]]) == "factor") {
+          if (inherits(data[[var]], "factor")) {
             clean.labels <- clean.names(levels(data[[var]]))
             if (length(unique(clean.labels)) != length(clean.labels)) {
               stop (paste("Error: levels of variable", var, "used as a dependency, are not unique when whitespace and meta-characters are removed. Please rename."))
@@ -339,7 +339,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
     if (is.null(subset)) {
         data <- data 
     } else {
-        if (class(subset) == "logical") {
+        if (inherits(subset, "logical")) {
             if (length(subset) == nrow(data)) {
                 data <- subset(data, subset) 
             } else {
@@ -763,7 +763,7 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
             all_levels_coefs <- list()
             for(effect in substrings) {
                 #if it's not a factor, only has the 1 "level" and coefficient name stays
-                if (class(data[[effect]]) != "factor") {
+                if (!inherits(data[[effect]] ,"factor")) {
                     all_levels[[effect]] <- effect
                     all_levels_coefs[[effect]] <- effect
                 } else {
@@ -979,9 +979,9 @@ amce <- function(formula, data, design="uniform", respondent.varying = NULL, sub
     output$baselines <- list()
     output$continuous <- list()
     for (k in unique_vars) {
-        if (class(data[[k]]) == "factor") {
+        if (inherits(data[[k]], "factor")) {
             output$baselines[[k]] <- levels(data[[k]])[1]
-        } else if (class(data[[k]]) == "numeric") {
+        } else if (inherits(data[[k]], "numeric")) {
              output$continuous[[k]] <- quantile(model.matrix(form,data)[,k], probs=c(0.25,0.5,0.75), na.rm=T)
         }
     }
@@ -2180,7 +2180,7 @@ plot.amce <- function(x, main="", xlab="Change in E[Y]", ci=.95, colors=NULL, xl
     p = p + theme_bw1()
     print(p)
     
-  } else if (class(plot.theme)[1] != "theme") {
+  } else if (!inherits(plot.theme, "theme")) {
     
     cat("Error: 'plot.theme' is not a valid ggplot theme object. Using default theme\n")
       theme_bw1 <- function(base_size = text.size, base_family = "") {
