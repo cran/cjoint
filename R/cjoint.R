@@ -7,7 +7,8 @@
 #' @importFrom stats coefficients formula lm model.matrix pnorm qnorm 
 #' @importFrom stats quantile relevel terms var vcov
 #' @importFrom stats as.formula reshape
-#' @importFrom utils read.csv packageDescription
+#' @importFrom utils read.csv packageDescription View data
+#' @importFrom grDevices pdf dev.off
 #' @export amce
 #' @export makeDesign
 #' @export plot.amce
@@ -1092,6 +1093,12 @@ get.conditional.effects <- function(object, conditional.levels, current.effect, 
         turn_off <- rep(1,ncol(pred_mat))
         names(turn_off) <- colnames(pred_mat)         
         turn_off[cond.base] <- 0
+        
+        ### Fix 3/20/2025 - Need to turn off *all baselines* for interaction objects 
+        ### (ones that don't contain the **specific interaction** of interest)
+        mod_coef_contain <- grep(mod_coef, colnames(pred_mat), invert=T)
+        turn_off[mod_coef_contain] <- 0
+        
         # Use to turn off terms in pred_mat that only contain respondent varying items
         pred_mat <- pred_mat[1,]*turn_off
         ## (4) Calculate coefficient and SE
@@ -2591,7 +2598,7 @@ read.qualtrics <- function(filename,responses=NULL,covariates = NULL,respondentI
   
   # Take care of null respondentID case
   if (!is.null(respondentID)){
-    id_var_name <- colnames(out_data_dataset)[which(q_names %in% respondentID)]
+    id_var_name <- colnames(out_data_dataset)[1] #By construction 1st element is the ID from out_data_dataset - thanks to bixiou
   } else {
     out_data_dataset <- cbind(out_data_dataset, respondent_index)
     id_var_name <- "respondent_index"
@@ -2926,7 +2933,7 @@ read.with.qualtRics <- function(filename,responses=NULL,covariates = NULL,respon
   
   # Take care of null respondentID case
   if (!is.null(respondentID)){
-    id_var_name <- colnames(out_data_dataset)[which(q_names %in% respondentID)]
+    id_var_name <- colnames(out_data_dataset)[1] #By construction 1st element is the ID from out_data_dataset - thanks to bixiou for noticing this
   } else {
     out_data_dataset <- cbind(out_data_dataset, respondent_index)
     id_var_name <- "respondent_index"

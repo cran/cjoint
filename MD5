@@ -1,11 +1,10 @@
-847c15931db92c840676d8e9b54ae316 *DESCRIPTION
-a9cbe99f8fab197196a529b0a7462faa *NAMESPACE
+bd72fcfbc3f4e88bd7e4d3e6f3db0717 *DESCRIPTION
+b0b433317a1460d935eba1916d6a2840 *NAMESPACE
 4b03528d5050fc504fbfed9341324268 *R/amce-documentation.R
-e97a44e723ede5f1d124f113de1a8999 *R/cjoint.R
+5481460bd29e05db10254c23c9b2a722 *R/cjoint.R
 2755f8fd0f24a1c06e05e69d6b9bd98d *R/onAttach.R
-0e25fb0b80939e843d5e68f431c91881 *R/test_data/HartmanMorse2017.dta
-d241a0f51c08e60423bafd29cb3a5e5b *R/test_data/Yamamoto2014.csv
 c26c4648f4b2ad9838c3297691c58b9e *R/view_amce.R
+1275301c72e60f30e347aa7e2bc1b7f7 *README.md
 c07af8186dacb4da754cc0bbf128f8a4 *data/immigrationconjoint.rda
 9df4953b90478b64b94031987337241c *data/immigrationdesign.rda
 e77cccd168291ac7377da329f87ca0d6 *data/japan2014conjoint.rda
@@ -14,7 +13,7 @@ e77cccd168291ac7377da329f87ca0d6 *data/japan2014conjoint.rda
 308e7bfe023ea857a925b443940681c1 *inst/CITATION
 ded412cc84d247bb9736e4c24ad10bcf *inst/CandidateConjointQualtrics.csv
 e3e9e0dd75428ded90067abac1b93c7d *man/amce.Rd
-f62e5e6be7bdf7c99c76331c5bc97d4b *man/cjoint-package.Rd
+c6768df7fcbefa1599084a3ad9a135d1 *man/cjoint-package.Rd
 d9007111dcac4d66448fe3803a119d3d *man/immigrationconjoint.Rd
 b7376260eee6caaed76cebb1581c114b *man/immigrationdesign.Rd
 4882a6b98230b81fcacd266fab03746b *man/japan2014conjoint.Rd
@@ -28,3 +27,5 @@ f6e9bbc4f430c8df12825e4c66d1cecf *man/read.qualtrics.Rd
 ded412cc84d247bb9736e4c24ad10bcf *tests/testthat/CandidateConjointQualtrics.csv
 ff8c1939a6f0a4b616b925edd99e37b0 *tests/testthat/test-main.r
 0fd51787d909f465b4d7ca557af273bf *tests/testthat/test-plot.R
+0e25fb0b80939e843d5e68f431c91881 *tests/testthat/test_data/HartmanMorse2017.dta
+d241a0f51c08e60423bafd29cb3a5e5b *tests/testthat/test_data/Yamamoto2014.csv

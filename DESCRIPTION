@@ -1,11 +1,18 @@
 Package: cjoint
-Version: 2.1.1
-Date: 2023-08-21
+Version: 2.1.3
+Date: 2026-05-18
 Title: AMCE Estimator for Conjoint Experiments
-Author: Soubhik Barari, Elissa Berwick, Jens Hainmueller, Daniel Hopkins, Sean Liu, Anton Strezhnev, Teppei Yamamoto
-Maintainer: Anton Strezhnev <astrezhnev@uchicago.edu>
+Authors@R: c(
+    person("Soubhik", "Barari", role = "aut"),
+    person("Elissa", "Berwick", role = "aut"),
+    person("Jens", "Hainmueller", role = "aut"),
+    person("Daniel", "Hopkins", role = "aut"),
+    person("Sean", "Liu", role = "aut"),
+    person("Anton", "Strezhnev", role = c("aut", "cre"),
+           email = "strezhnev@wisc.edu"),
+    person("Teppei", "Yamamoto", role = "aut"))
 Depends: R (>= 2.10), sandwich, lmtest, ggplot2, survey, Matrix
-Imports: stats, utils, methods, DT, shiny, shinyjs
+Imports: stats, utils, methods, grDevices, DT, shiny, shinyjs
 Suggests: testthat
 Description: An R implementation of the Average Marginal Component-specific
     Effects (AMCE) estimator presented in Hainmueller, J., Hopkins, D., and Yamamoto
@@ -15,6 +22,14 @@ License: GPL (>= 2)
 RoxygenNote: 6.1.0
 Encoding: UTF-8
 NeedsCompilation: no
-Packaged: 2023-08-21 20:00:11 UTC; anton
+Packaged: 2026-05-18 19:10:22 UTC; anton
+Author: Soubhik Barari [aut],
+  Elissa Berwick [aut],
+  Jens Hainmueller [aut],
+  Daniel Hopkins [aut],
+  Sean Liu [aut],
+  Anton Strezhnev [aut, cre],
+  Teppei Yamamoto [aut]
+Maintainer: Anton Strezhnev <strezhnev@wisc.edu>
 Repository: CRAN
-Date/Publication: 2023-08-22 07:50:07 UTC
+Date/Publication: 2026-05-19 05:30:02 UTC
